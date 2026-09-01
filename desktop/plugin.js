@@ -859,9 +859,22 @@ function widgetHasContent(type, payload) {
   return Boolean((payload.items || []).length)
 }
 
-function WidgetCard({ widget, payload }) {
+function WidgetCard({ widget, payload, processing = false }) {
   const Component = WIDGETS[widget.type]
   const filled = widget.supported && widgetHasContent(widget.type, payload)
+  const body = !widget.supported
+    ? h(
+        'div',
+        { className: 'text-[0.6875rem]', style: { color: 'var(--ui-text-tertiary)' } },
+        'This widget type is not in the Home vocabulary, so nothing was rendered.'
+      )
+    : filled
+      ? h(Component, { payload })
+      : h(
+          'div',
+          { className: 'text-[0.6875rem]', style: { color: 'var(--ui-text-quaternary)' } },
+          widget.empty || 'no data yet'
+        )
 
   return h(
     'section',
@@ -873,21 +886,13 @@ function WidgetCard({ widget, payload }) {
       'div',
       { className: 'flex items-center justify-between gap-2' },
       h('h2', { className: 'text-xs font-medium' }, widget.title || widget.id),
-      widget.supported ? null : h(Badge, { size: 'sm', variant: 'secondary' }, `skipped: ${widget.type || 'no type'}`)
+      processing
+        ? h(Badge, { size: 'sm', variant: 'secondary' }, 'Updating…')
+        : widget.supported
+          ? null
+          : h(Badge, { size: 'sm', variant: 'secondary' }, `skipped: ${widget.type || 'no type'}`)
     ),
-    !widget.supported
-      ? h(
-          'div',
-          { className: 'text-[0.6875rem]', style: { color: 'var(--ui-text-tertiary)' } },
-          'This widget type is not in the Home vocabulary, so nothing was rendered.'
-        )
-      : filled
-        ? h(Component, { payload })
-        : h(
-            'div',
-            { className: 'text-[0.6875rem]', style: { color: 'var(--ui-text-quaternary)' } },
-            widget.empty || 'no data yet'
-          )
+    h('div', { className: processing ? 'opacity-50' : undefined }, body)
   )
 }
 
@@ -1045,53 +1050,77 @@ function ActionsBar({ bot, actions }) {
  *  A dashboard that makes you open a chat to act on it has not replaced the
  *  chat. This sends the prompt to the bot's canonical Bot Chat and refreshes
  *  the dashboard when the run returns, so the answer arrives as updated
- *  widgets. Bots that do not need it leave `composer` false and get no input. */
-function Composer({ bot }) {
+ *  widgets. Bots that do not need it leave `composer` false and get no input.
+ *  `processing` lives on the page so the header and widgets can show the same
+ *  in-flight state — the focused chat's busy flag does not cover this run. */
+function Composer({ bot, processing, setProcessing, homeUpdatedAt }) {
   const [text, setText] = useState('')
-  const [sending, setSending] = useState(false)
 
   const send = async () => {
     const prompt = text.trim()
 
-    if (!prompt || sending) {
+    if (!prompt || processing) {
       return
     }
 
-    setSending(true)
+    setProcessing(true)
 
     try {
       await sendPrompt(bot, prompt)
       setText('')
-      queryClient.invalidateQueries({ queryKey: [PLUGIN_ID, 'home', bot] })
+      await refreshDashboard(bot)
     } catch (error) {
-      host.notifyError(error, `Could not reach ${bot}`)
+      // Desktop's JSON-RPC door times out at 30s. `timeout: 300` on cli.exec
+      // is the subprocess budget, not that RPC window — so a long Home rewrite
+      // still finishes, but the waiter dies. That is not "could not reach".
+      if (isCliExecTimeout(error)) {
+        setText('')
+        host.notify({
+          kind: 'info',
+          message: 'Still working — this dashboard will update when the bot finishes'
+        })
+        await awaitHomeCatchup(bot, homeUpdatedAt)
+      } else {
+        host.notifyError(error, `Could not reach ${bot}`)
+      }
     } finally {
-      setSending(false)
+      setProcessing(false)
     }
   }
 
   return h(
     'div',
-    { className: 'flex items-center gap-2 rounded-lg border p-2', style: { borderColor: 'var(--ui-stroke-secondary)' } },
-    h('input', {
-      value: text,
-      disabled: sending,
-      placeholder: `Ask ${bot} to update this`,
-      onChange: event => setText(event.target.value),
-      onKeyDown: event => {
-        if (event.key === 'Enter' && !event.shiftKey) {
-          event.preventDefault()
-          void send()
-        }
-      },
-      className: 'min-w-0 flex-1 bg-transparent px-2 text-xs outline-none',
-      style: { color: 'var(--ui-text-primary)' }
-    }),
+    { className: 'flex flex-col gap-1.5' },
     h(
-      Button,
-      { size: 'sm', disabled: sending || !text.trim(), onClick: () => void send() },
-      sending ? 'Working…' : 'Send'
-    )
+      'div',
+      { className: 'flex items-center gap-2 rounded-lg border p-2', style: { borderColor: 'var(--ui-stroke-secondary)' } },
+      h('input', {
+        value: text,
+        disabled: processing,
+        placeholder: `Ask ${bot} to update this`,
+        onChange: event => setText(event.target.value),
+        onKeyDown: event => {
+          if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault()
+            void send()
+          }
+        },
+        className: 'min-w-0 flex-1 bg-transparent px-2 text-xs outline-none',
+        style: { color: 'var(--ui-text-primary)' }
+      }),
+      h(
+        Button,
+        { size: 'sm', disabled: processing || !text.trim(), onClick: () => void send() },
+        processing ? 'Working…' : 'Send'
+      )
+    ),
+    processing
+      ? h(
+          'div',
+          { className: 'px-1 text-[0.6875rem]', style: { color: 'var(--ui-text-tertiary)' } },
+          'Updating this dashboard…'
+        )
+      : null
   )
 }
 
@@ -1114,11 +1143,12 @@ function BotDetail({ bot }) {
   const home = useHome(bot)
   const busy = useValue(host.state.busy)
   const focusedProfile = useValue(host.state.focusedSessionProfile)
+  const [processing, setProcessing] = useState(false)
 
   const row = (roster.data || []).find(entry => entry.bot === bot) || { bot, label: bot, role: '', lastActive: 0 }
   const payload = home.data && home.data.has_home ? home.data : null
   const status = botStatus({
-    busy: Boolean(busy) && focusedProfile === bot,
+    busy: processing || (Boolean(busy) && focusedProfile === bot),
     lastActive: row.lastActive,
     routines: routines.data,
     home: home.data
@@ -1137,6 +1167,22 @@ function BotDetail({ bot }) {
     h(
       DetailHeader,
       { bot, row, status, subtitle: payload?.schema?.subtitle },
+      h(
+        Tip,
+        { label: 'Re-read this dashboard' },
+        h(
+          Button,
+          {
+            variant: 'ghost',
+            size: 'sm',
+            onClick: () => {
+              haptic('tap')
+              void refreshDashboard(bot)
+            }
+          },
+          'Refresh'
+        )
+      ),
       h(Button, { variant: 'secondary', size: 'sm', onClick: () => void openChat(bot) }, 'Open chat')
     ),
     h(
@@ -1175,7 +1221,9 @@ function BotDetail({ bot }) {
             )
           : null,
         h(ActionsBar, { bot, actions: payload?.schema?.actions }),
-        payload?.schema?.composer ? h(Composer, { bot }) : null,
+        payload?.schema?.composer
+          ? h(Composer, { bot, processing, setProcessing, homeUpdatedAt: payload?.updated_at })
+          : null,
         h(WarningsPanel, { warnings: payload?.warnings }),
         !home.isLoading && !home.isError && !payload
           ? h(EmptyState, {
@@ -1187,7 +1235,9 @@ function BotDetail({ bot }) {
           ? h(
               'div',
               { className: 'grid gap-4 sm:grid-cols-2' },
-              ...widgets.map(widget => h(WidgetCard, { key: widget.id, widget, payload: data[widget.id] }))
+              ...widgets.map(widget =>
+                h(WidgetCard, { key: widget.id, widget, payload: data[widget.id], processing })
+              )
             )
           : null,
         h(RoutinesSection, { routines: routines.data })
@@ -1281,6 +1331,44 @@ async function runRoutine(bot, job) {
   queryClient.invalidateQueries({ queryKey: [PLUGIN_ID] })
 }
 
+/** Re-read roster, routines, and this bot's Home. Invalidate is enough for
+ *  polling views; awaiting the home refetch keeps the composer "Working"
+ *  state up until the new widgets are on screen. */
+async function refreshDashboard(bot) {
+  await queryClient.invalidateQueries({ queryKey: [PLUGIN_ID] })
+
+  if (bot && typeof queryClient.refetchQueries === 'function') {
+    await queryClient.refetchQueries({ queryKey: [PLUGIN_ID, 'home', bot] })
+  }
+}
+
+/** Desktop's JSON-RPC waiter, not the CLI subprocess. `cli.exec` params.timeout
+ *  can be minutes; `host.request` still dies at the default 30s. */
+function isCliExecTimeout(error) {
+  return /timed out after \d+s:\s*cli\.exec/i.test(String(error?.message || error || ''))
+}
+
+function delay(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms))
+}
+
+/** Keep polling Home after the RPC waiter gave up — the bot is still writing. */
+async function awaitHomeCatchup(bot, previousUpdatedAt, { intervalMs = 2_000, maxMs = 120_000 } = {}) {
+  const started = Date.now()
+
+  while (Date.now() - started < maxMs) {
+    await refreshDashboard(bot)
+
+    const home = typeof queryClient.getQueryData === 'function' ? queryClient.getQueryData([PLUGIN_ID, 'home', bot]) : null
+
+    if (home?.updated_at && home.updated_at !== previousUpdatedAt) {
+      return
+    }
+
+    await delay(intervalMs)
+  }
+}
+
 /** Send one prompt to a bot's canonical Bot Chat without opening it.
  *
  *  `cli.exec` is the gateway's generic CLI door and the same mechanism bots use
@@ -1341,8 +1429,17 @@ function setQuery(value) {
  *
  *  Turn start/end is the live "working" signal; reclaim is Bot Mode's
  *  "this conversation just came back"; we do not subscribe to `*` because
- *  token deltas would refetch the roster on every streamed character. */
-const LIVE_EVENT_TYPES = ['turn.started', 'turn.error', 'turn.start', 'session.reclaimed']
+ *  token deltas would refetch the roster on every streamed character.
+ *  Extra end-event aliases are harmless if the gateway never emits them. */
+const LIVE_EVENT_TYPES = [
+  'turn.started',
+  'turn.error',
+  'turn.start',
+  'turn.ended',
+  'turn.end',
+  'turn.completed',
+  'session.reclaimed'
+]
 
 /** Feature-detected: older desktops have no `host.onEvent`. Polling in the
  *  queries still covers that case — this is an accelerator, not the source of

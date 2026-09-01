@@ -117,3 +117,22 @@ test('the composer sends to the bot Chat and reports a refusal', async () => {
 
   await assert.rejects(() => failed.sendPrompt('bot', 'hi'), /boom/)
 })
+
+test('refreshDashboard invalidates the plugin then refetches that bot Home', async () => {
+  const plugin = loadPlugin()
+
+  await plugin.refreshDashboard('researcher')
+
+  assert.deepEqual(plugin.invalidations, [
+    { kind: 'invalidate', queryKey: ['bot-control-center'] },
+    { kind: 'refetch', queryKey: ['bot-control-center', 'home', 'researcher'] }
+  ])
+})
+
+test('a 30s cli.exec RPC timeout is not treated as unreachable', () => {
+  const { isCliExecTimeout } = loadPlugin()
+
+  assert.equal(isCliExecTimeout(new Error('request timed out after 30s: cli.exec')), true)
+  assert.equal(isCliExecTimeout(new Error('the gateway refused that command')), false)
+  assert.equal(isCliExecTimeout(new Error('boom')), false)
+})

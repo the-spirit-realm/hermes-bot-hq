@@ -28,6 +28,8 @@ const EXPORTED = [
   'routineSummary',
   'performAction',
   'sendPrompt',
+  'refreshDashboard',
+  'isCliExecTimeout',
   'runRoutine',
   'LIVE_EVENT_TYPES',
   'subscribeLiveUpdates',
@@ -99,7 +101,16 @@ export function loadPlugin({ requestResults = {}, restResults = {}, revealPath =
     jsx: (type, props, key) => ({ type, props, key }),
     jsxs: (type, props, key) => ({ type, props, key }),
     profileColor: () => '#abcdef',
-    queryClient: { invalidateQueries: params => invalidations.push(params) },
+    queryClient: {
+      invalidateQueries: params => {
+        invalidations.push({ kind: 'invalidate', ...params })
+        return Promise.resolve()
+      },
+      refetchQueries: params => {
+        invalidations.push({ kind: 'refetch', ...params })
+        return Promise.resolve()
+      }
+    },
     relativeTime: () => 'just now',
     useQuery: () => ({ data: undefined }),
     useState: initial => [initial, () => undefined],
