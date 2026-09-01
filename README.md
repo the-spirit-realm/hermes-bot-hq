@@ -15,9 +15,9 @@ ever executes.
 
 ## What you get
 
-- **Fleet page** at `/control-center`, in the sidebar and the command palette.
-  Every bot appears automatically — a bot is a Hermes profile, so there is
-  nothing to register.
+- **Fleet page** at `/control-center` and in the command palette. Every bot
+  appears automatically — a bot is a Hermes profile, so there is nothing to
+  register.
 - Per card: name and role from Bot Mode, live status (working, active, routine
   failed, stale, idle), whether a dashboard is published and how fresh it is,
   and the next routine that will fire.
@@ -31,13 +31,19 @@ ever executes.
 
 ## Install
 
-From a Git remote:
+```bash
+hermes plugins install the-spirit-realm/hermes-bot-hq
+```
+
+That accepts a Git URL, `owner/repo`, or a community-index name.
+
+From Hermes Desktop, the same Git remote is:
 
 ```text
 hermes://plugin/install?repo=the-spirit-realm/hermes-bot-hq
 ```
 
-Or by hand:
+Or clone by hand:
 
 ```bash
 git clone <repo> ~/.hermes/plugins/hermes-bot-hq
