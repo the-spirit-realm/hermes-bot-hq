@@ -1,74 +1,78 @@
 # Bot HQ
 
-A Hermes Desktop page that lists every bot on your machine and, for each one,
-the dashboard that bot maintains for itself.
+One page in Hermes Desktop for every bot on your machine. Open it to see who
+is working, what runs next, and each bot's own dashboard — without hunting
+through chat transcripts.
 
-Bots are useful because they run without you. That is also the problem: the only
-way to find out what yours have been doing is to open Hermes, pick a bot, and
-read a chat transcript. This adds the missing surface — one page, every bot,
-status and routines at a glance, and a real dashboard behind each name.
+## Set up
 
-The bot owns the data. The plugin owns the structure. A bot refreshes its numbers
-whenever it likes, but the widget vocabulary is fixed and small, so the page
-cannot rearrange itself every morning and no agent-authored HTML or JavaScript
-ever executes.
+Do these in order. Skip nothing; the page and the dashboard reader are
+separate switches, and both start off.
 
-## What you get
-
-- **Fleet page** at `/control-center` and in the command palette. Every bot
-  appears automatically — a bot is a Hermes profile, so there is nothing to
-  register.
-- Per card: name and role from Bot Mode, live status (working, active, routine
-  failed, stale, idle), whether a dashboard is published and how fresh it is,
-  and the next routine that will fire.
-- **Per-bot dashboard** built from two JSON files the bot writes into its own
-  profile: `home/schema.json` (layout) and `home/data.json` (values).
-- **Declared actions** — `run_routine`, `open_chat`, `open_path`, `open_url`.
-  Never a command string.
-- **Optional composer**, only for bots that ask for one: a single input that
-  sends a prompt and refreshes the dashboard instead of opening a transcript.
-- Bots without a dashboard still work here: status, routines, a paste-ready
-  prompt, and a chat link.
-
-## Install
+**1. Install the plugin**
 
 ```bash
 hermes plugins install the-spirit-realm/hermes-bot-hq
 ```
 
-That accepts a Git URL, `owner/repo`, or a community-index name.
+**2. Turn on the page**
 
-From Hermes Desktop, the same Git remote is:
+In Hermes Desktop: **Settings → Plugins → Bot HQ**.
 
-```text
-hermes://plugin/install?repo=the-spirit-realm/hermes-bot-hq
+**3. Turn on the dashboard reader**
+
+```bash
+hermes plugins enable hermes-bot-hq
 ```
 
-Or copy the repository by hand into `~/.hermes/plugins/hermes-bot-hq`.
+Then fully quit Hermes and open it again. The reader only starts with the
+backend, so a reload of the page is not enough.
 
-Then flip both switches — they are independent and both default off:
+**4. Open it**
 
-1. **The UI.** Hermes Desktop ▸ Settings ▸ Plugins ▸ enable *Bot HQ*.
-   It hot-reloads on save; `Cmd+K ▸ Reload desktop plugins` if not.
-2. **The Home reader.** `hermes plugins enable hermes-bot-hq`, then
-   **restart the Hermes backend** — plugin routes mount at startup. A
-   "Dashboards unavailable" banner on the fleet page means this step is
-   pending; everything else still works.
+Click **Bot HQ** in the sidebar. (If it is missing, press `Cmd+K`, run
+**Reload desktop plugins**, and look again.)
 
-## Teaching a bot to publish
+You should see every local bot. If a yellow **Dashboards unavailable** bar
+appears at the top, step 3 did not take — enable the plugin and quit/reopen
+once more.
 
-The package ships a `bot-home` skill, registered under the qualified name
-`hermes-bot-hq:bot-home` (Hermes namespaces every plugin skill). Ask a bot
-to build its dashboard and it will find the contract; to make it automatic,
-attach the skill to a routine and tell that routine to rewrite `data.json` at
-the end of each run:
+## Get a dashboard on a bot
+
+1. Click the bot.
+2. If it has no dashboard yet, click **Copy and open chat**.
+3. Paste into the chat and send.
+
+The bot writes its own Home. Come back to Bot HQ and refresh if it does not
+show up right away.
+
+To refresh that dashboard on a schedule, add the skill to the routine that
+already does the work:
 
 ```bash
 hermes cron edit <job-id> --add-skill hermes-bot-hq:bot-home
 ```
 
-Or hand-write the two files yourself to see the shape — `examples/` has a
-complete pair. The full reference is [`docs/home-contract.md`](docs/home-contract.md).
+## Other ways to install
+
+- **From Desktop, no terminal:** paste
+  `hermes://plugin/install?repo=the-spirit-realm/hermes-bot-hq`
+  into Hermes. That is an install link the app handles, not a website.
+- **From a git clone:** put the repo at `~/.hermes/plugins/hermes-bot-hq`,
+  then do steps 2–4 above.
+
+## What you get
+
+- A fleet page: every Hermes profile, no signup or register step.
+- Per bot: status, next routine, and a dashboard the bot publishes as
+  `home/schema.json` + `home/data.json` in its profile.
+- Buttons the bot declares (`run_routine`, `open_chat`, `open_path`,
+  `open_url`) and an optional one-line composer.
+- The widget list is fixed on purpose, so a dashboard cannot rearrange
+  itself overnight and no bot-authored HTML or JavaScript ever runs.
+
+The data contract is [`docs/home-contract.md`](docs/home-contract.md).
+A complete file pair lives in `examples/`.
 
 ## Layout
 
@@ -86,10 +90,9 @@ hermes-bot-hq/
 └── tests/                 # node:test for the UI, unittest for the reader
 ```
 
-Why a Python half at all, when bots write plain files: the gateway exposes no
-file-read RPC and a disk plugin may only import `@hermes/plugin-sdk`, so
-something server-side has to hand those files to the UI. `plugin_api.py` is a
-reader and a validator — it never writes a Home.
+The Python half exists because the gateway has no file-read RPC and a disk
+plugin may only import `@hermes/plugin-sdk`. `plugin_api.py` reads and
+validates Home files. It never writes them.
 
 ## Tests
 
