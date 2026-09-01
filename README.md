@@ -43,11 +43,7 @@ From Hermes Desktop, the same Git remote is:
 hermes://plugin/install?repo=the-spirit-realm/hermes-bot-hq
 ```
 
-Or clone by hand:
-
-```bash
-git clone <repo> ~/.hermes/plugins/hermes-bot-hq
-```
+Or copy the repository by hand into `~/.hermes/plugins/hermes-bot-hq`.
 
 Then flip both switches — they are independent and both default off:
 

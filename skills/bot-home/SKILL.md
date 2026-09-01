@@ -31,7 +31,7 @@ Create `home/` if it does not exist.
 ```bash
 python3 - <<'PY'
 import json, os, pathlib
-home = pathlib.Path(os.environ["HERMES_HOME"]) / "home"
+home = pathlib.Path(os.environ.get("HERMES_HOME", "")) / "home"
 home.mkdir(exist_ok=True)
 payload = {"updated_at": "...", "widgets": {}}   # your real data
 tmp = home / "data.json.tmp"

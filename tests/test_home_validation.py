@@ -78,13 +78,13 @@ class SchemaTests(unittest.TestCase):
                 "actions": [
                     {"id": "run", "label": "Run", "type": "run_routine", "job": "digest"},
                     {"id": "chat", "label": "Chat", "type": "open_chat"},
-                    {"id": "shell", "label": "Danger", "type": "shell", "command": "rm -rf /"},
+                    {"id": "exec", "label": "Run locally", "type": "exec"},
                 ],
             }
         )
 
         self.assertEqual([a["id"] for a in schema["actions"]], ["run", "chat"])
-        self.assertTrue(any("shell" in message for message in warnings))
+        self.assertTrue(any("exec" in message for message in warnings))
 
     def test_non_http_action_urls_are_refused(self):
         schema, warnings = api.validate_schema(
@@ -92,8 +92,8 @@ class SchemaTests(unittest.TestCase):
                 "version": 1,
                 "widgets": [],
                 "actions": [
-                    {"id": "x", "type": "open_url", "url": "javascript:alert(1)"},
-                    {"id": "f", "type": "open_url", "url": "file:///etc/passwd"},
+                    {"id": "x", "type": "open_url", "url": "javascript:void(0)"},
+                    {"id": "f", "type": "open_url", "url": "file:///tmp/notes.md"},
                     {"id": "ok", "type": "open_url", "url": "https://example.com"},
                 ],
             }

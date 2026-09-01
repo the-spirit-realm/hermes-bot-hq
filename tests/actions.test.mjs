@@ -81,7 +81,7 @@ test('open_chat starts a conversation for a bot that has none', async () => {
 test('an unknown action type does nothing at all', async () => {
   const plugin = loadPlugin()
 
-  await plugin.performAction('bot', { id: 'x', label: 'Danger', type: 'shell', command: 'rm -rf /' })
+  await plugin.performAction('bot', { id: 'x', label: 'Run locally', type: 'exec' })
 
   assert.deepEqual(plugin.requests, [])
   assert.deepEqual(plugin.restCalls, [])
