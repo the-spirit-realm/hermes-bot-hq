@@ -27,7 +27,8 @@ ever executes.
   Never a command string.
 - **Optional composer**, only for bots that ask for one: a single input that
   sends a prompt and refreshes the dashboard instead of opening a transcript.
-- Bots without a dashboard still work here: status, routines, and a chat link.
+- Bots without a dashboard still work here: status, routines, a paste-ready
+  prompt, and a chat link.
 
 ## Install
 

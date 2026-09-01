@@ -44,6 +44,11 @@ const ROUTE = '/control-center'
  *  surfaces never disagree about who is working. */
 const ACTIVE_WINDOW_S = 90
 
+/** Paste this in the bot's chat so it publishes a Home. Named so the skill
+ *  description matches, and short enough to copy without editing. */
+const HOME_BOOTSTRAP_PROMPT =
+  'Publish a Home for yourself in Bot HQ. Load the hermes-bot-hq:bot-home skill, then write home/schema.json and home/data.json in your profile. Design the dashboard around the work you actually do, fill it with current numbers, and rewrite data.json at the end of your routines.'
+
 /** SDK `relativeTime` expects epoch **milliseconds**; cron and Home JSON hand us
  *  ISO strings (sometimes epoch seconds). A raw string produces NaN inside
  *  Intl.RelativeTimeFormat and crashes the page — normalize first. */
@@ -982,6 +987,58 @@ function DetailHeader({ bot, row, status, subtitle, children }) {
   )
 }
 
+function MissingHome({ bot, label }) {
+  const [copied, setCopied] = useState(false)
+
+  const copy = async () => {
+    haptic('tap')
+    const ok = await copyText(HOME_BOOTSTRAP_PROMPT)
+
+    if (ok) {
+      setCopied(true)
+    }
+
+    return ok
+  }
+
+  return h(
+    'div',
+    {
+      className: 'flex flex-col gap-3 rounded-lg border px-4 py-4',
+      style: { borderColor: 'var(--ui-stroke-secondary)' }
+    },
+    h('div', { className: 'text-sm font-medium' }, 'No dashboard yet'),
+    h(
+      'div',
+      { className: 'text-xs', style: { color: 'var(--ui-text-tertiary)' } },
+      `Paste this into ${label}'s chat and it will publish one.`
+    ),
+    h(
+      'pre',
+      {
+        className: 'max-h-40 overflow-auto whitespace-pre-wrap rounded-md border px-3 py-2 text-xs leading-5',
+        style: { borderColor: 'var(--ui-stroke-secondary)', color: 'var(--ui-text-primary)' }
+      },
+      HOME_BOOTSTRAP_PROMPT
+    ),
+    h(
+      'div',
+      { className: 'flex flex-wrap items-center gap-2' },
+      h(Button, { size: 'sm', variant: 'secondary', onClick: () => void copy() }, copied ? 'Copied' : 'Copy'),
+      h(
+        Button,
+        {
+          size: 'sm',
+          onClick: () => {
+            void copy().then(() => void openChat(bot))
+          }
+        },
+        'Copy and open chat'
+      )
+    )
+  )
+}
+
 function UpdatedLine({ home }) {
   const data = home?.data
   const parts = []
@@ -1225,12 +1282,7 @@ function BotDetail({ bot }) {
           ? h(Composer, { bot, processing, setProcessing, homeUpdatedAt: payload?.updated_at })
           : null,
         h(WarningsPanel, { warnings: payload?.warnings }),
-        !home.isLoading && !home.isError && !payload
-          ? h(EmptyState, {
-              title: 'No dashboard published yet',
-              description: `${row.label} has not written a Home. Ask it to publish one with the hermes-bot-hq:bot-home skill, or hand-write home/schema.json in its profile.`
-            })
-          : null,
+        !home.isLoading && !home.isError && !payload ? h(MissingHome, { bot, label: row.label }) : null,
         widgets.length
           ? h(
               'div',
@@ -1263,6 +1315,21 @@ function BotHqPage() {
 function selectBot(bot) {
   $selectedBot.set(bot)
   pluginCtx?.storage?.set('selectedBot', bot)
+}
+
+async function copyText(text) {
+  try {
+    if (typeof navigator === 'undefined' || !navigator.clipboard?.writeText) {
+      throw new Error('clipboard unavailable')
+    }
+
+    await navigator.clipboard.writeText(text)
+    host.notify({ kind: 'success', message: 'Copied — paste it in chat' })
+    return true
+  } catch (error) {
+    host.notifyError(error, 'Could not copy. Select the prompt and copy it yourself.')
+    return false
+  }
 }
 
 /** Hand a link to the OS. `ctx.os` resolves false rather than throwing when

@@ -136,3 +136,35 @@ test('a 30s cli.exec RPC timeout is not treated as unreachable', () => {
   assert.equal(isCliExecTimeout(new Error('the gateway refused that command')), false)
   assert.equal(isCliExecTimeout(new Error('boom')), false)
 })
+
+test('the unpublished-Home prompt names the skill and the two files', () => {
+  const { HOME_BOOTSTRAP_PROMPT } = loadPlugin()
+
+  assert.match(HOME_BOOTSTRAP_PROMPT, /hermes-bot-hq:bot-home/)
+  assert.match(HOME_BOOTSTRAP_PROMPT, /home\/schema\.json/)
+  assert.match(HOME_BOOTSTRAP_PROMPT, /home\/data\.json/)
+})
+
+test('copyText writes the prompt and says so', async () => {
+  const written = []
+  const previous = globalThis.navigator
+  Object.defineProperty(globalThis, 'navigator', {
+    configurable: true,
+    value: { clipboard: { writeText: text => written.push(text) } }
+  })
+
+  try {
+    const plugin = loadPlugin()
+    const ok = await plugin.copyText(plugin.HOME_BOOTSTRAP_PROMPT)
+
+    assert.equal(ok, true)
+    assert.deepEqual(written, [plugin.HOME_BOOTSTRAP_PROMPT])
+    assert.equal(plugin.notifications[0].kind, 'success')
+  } finally {
+    if (previous === undefined) {
+      delete globalThis.navigator
+    } else {
+      Object.defineProperty(globalThis, 'navigator', { configurable: true, value: previous })
+    }
+  }
+})

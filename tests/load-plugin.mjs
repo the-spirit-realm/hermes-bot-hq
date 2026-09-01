@@ -34,7 +34,9 @@ const EXPORTED = [
   'LIVE_EVENT_TYPES',
   'subscribeLiveUpdates',
   'toEpochMs',
-  'when'
+  'when',
+  'HOME_BOOTSTRAP_PROMPT',
+  'copyText'
 ]
 
 export function loadPlugin({ requestResults = {}, restResults = {}, revealPath = true, openExternal = true } = {}) {
