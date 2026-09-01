@@ -1,5 +1,5 @@
 /**
- * Bot Control Center — the desktop half.
+ * Bot HQ — the desktop half.
  *
  * A fleet page for every bot on the machine plus, per bot, the dashboard that
  * bot publishes for itself. A bot IS a Hermes profile, so nothing here has to
@@ -36,7 +36,7 @@ import {
 import { useState } from 'react'
 import { jsx, jsxs } from 'react/jsx-runtime'
 
-const PLUGIN_ID = 'bot-control-center'
+const PLUGIN_ID = 'hermes-bot-hq'
 const ROUTE = '/control-center'
 
 /** A bot whose newest message landed inside this window reads as active — the
@@ -410,7 +410,7 @@ function FleetHeader({ count, busyCount, onRefresh, query, setQuery }) {
     h(
       'div',
       { className: 'min-w-0 flex-1' },
-      h('div', { className: 'text-sm font-medium' }, 'Control Center'),
+      h('div', { className: 'text-sm font-medium' }, 'Bot HQ'),
       h(
         'div',
         { className: 'text-xs', style: { color: 'var(--ui-text-tertiary)' } },
@@ -438,7 +438,7 @@ function BackendHint() {
       className: 'border-b px-6 py-2 text-[0.6875rem]',
       style: { borderColor: 'var(--ui-stroke-secondary)', color: 'var(--ui-text-tertiary)' }
     },
-    'Dashboards unavailable — add bot-control-center to plugins.enabled and restart the backend. Status and routines still work.'
+    'Dashboards unavailable — add hermes-bot-hq to plugins.enabled and restart the backend. Status and routines still work.'
   )
 }
 
@@ -1207,7 +1207,7 @@ function BotDetail({ bot }) {
                 className: 'rounded-lg border px-4 py-3 text-xs',
                 style: { borderColor: 'var(--ui-stroke-secondary)', color: 'var(--ui-text-tertiary)' }
               },
-              'Could not reach the Home reader. Add bot-control-center to plugins.enabled and restart the backend.'
+              'Could not reach the Home reader. Add hermes-bot-hq to plugins.enabled and restart the backend.'
             )
           : null,
         payload?.error
@@ -1228,7 +1228,7 @@ function BotDetail({ bot }) {
         !home.isLoading && !home.isError && !payload
           ? h(EmptyState, {
               title: 'No dashboard published yet',
-              description: `${row.label} has not written a Home. Ask it to publish one with the bot-control-center:bot-home skill, or hand-write home/schema.json in its profile.`
+              description: `${row.label} has not written a Home. Ask it to publish one with the hermes-bot-hq:bot-home skill, or hand-write home/schema.json in its profile.`
             })
           : null,
         widgets.length
@@ -1250,7 +1250,7 @@ function BotDetail({ bot }) {
  * Page shell
  * ------------------------------------------------------------------ */
 
-function ControlCenterPage() {
+function BotHqPage() {
   const bot = useValue($selectedBot)
 
   return bot ? h(BotDetail, { bot }) : h(FleetPage, {})
@@ -1471,7 +1471,7 @@ function subscribeLiveUpdates(ctx) {
 
 export default {
   id: PLUGIN_ID,
-  name: 'Bot Control Center',
+  name: 'Bot HQ',
   description: 'Fleet view of every bot plus per-bot dashboards the bots publish themselves.',
   defaultEnabled: false,
   register(ctx) {
@@ -1489,22 +1489,22 @@ export default {
       {
         id: 'page',
         area: ROUTES_AREA,
-        title: 'Control Center',
+        title: 'Bot HQ',
         data: { path: ROUTE },
-        render: () => h(ControlCenterPage, {})
+        render: () => h(BotHqPage, {})
       },
       {
         id: 'nav',
         area: SIDEBAR_NAV_AREA,
-        data: { path: ROUTE, label: 'Control Center', codicon: 'dashboard' }
+        data: { path: ROUTE, label: 'Bot HQ', codicon: 'dashboard' }
       },
       {
         id: 'open',
         area: PALETTE_AREA,
         data: {
           id: 'control-center.open',
-          label: 'Open Control Center',
-          keywords: ['bots', 'fleet', 'dashboard', 'control'],
+          label: 'Open Bot HQ',
+          keywords: ['bots', 'fleet', 'dashboard', 'control', 'hq'],
           run: () => {
             selectBot(null)
             host.navigate(ROUTE)

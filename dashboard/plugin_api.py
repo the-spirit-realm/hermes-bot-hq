@@ -1,6 +1,6 @@
-"""Bot Control Center — backend routes.
+"""Bot HQ — backend routes.
 
-Mounted at ``/api/plugins/bot-control-center/`` by the dashboard plugin system
+Mounted at ``/api/plugins/hermes-bot-hq/`` by the dashboard plugin system
 and reached from the desktop half through ``ctx.rest``.
 
 Why this layer exists at all: a bot publishes its dashboard as plain JSON in
@@ -600,7 +600,7 @@ def _home_summary(bot: str) -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as exc:  # a bad file must never take out the whole fleet
-        log.warning("bot-control-center: summary failed for %s: %s", bot, exc)
+        log.warning("hermes-bot-hq: summary failed for %s: %s", bot, exc)
         return {"bot": bot, "has_home": False, "error": str(exc)}
 
     return {
@@ -622,7 +622,7 @@ def _home_summary(bot: str) -> Dict[str, Any]:
 
 @router.get("/health")
 async def health() -> Dict[str, Any]:
-    return {"ok": True, "plugin": "bot-control-center", "widget_types": sorted(WIDGET_TYPES)}
+    return {"ok": True, "plugin": "hermes-bot-hq", "widget_types": sorted(WIDGET_TYPES)}
 
 
 @router.get("/fleet")
@@ -682,7 +682,7 @@ async def run_routine(bot: str, body: RunRoutineBody) -> Dict[str, Any]:
     except HTTPException:
         raise
     except Exception as exc:
-        log.warning("bot-control-center: run-routine failed for %s/%s: %s", bot, job_ref, exc)
+        log.warning("hermes-bot-hq: run-routine failed for %s/%s: %s", bot, job_ref, exc)
         raise HTTPException(status_code=500, detail=str(exc)) from exc
     finally:
         reset_hermes_home_override(token)

@@ -1,4 +1,4 @@
-# Bot Control Center
+# Bot HQ
 
 A Hermes Desktop page that lists every bot on your machine and, for each one,
 the dashboard that bot maintains for itself.
@@ -34,20 +34,20 @@ ever executes.
 From a Git remote:
 
 ```text
-hermes://plugin/install?repo=<owner>/bot-control-center
+hermes://plugin/install?repo=the-spirit-realm/hermes-bot-hq
 ```
 
 Or by hand:
 
 ```bash
-git clone <repo> ~/.hermes/plugins/bot-control-center
+git clone <repo> ~/.hermes/plugins/hermes-bot-hq
 ```
 
 Then flip both switches — they are independent and both default off:
 
-1. **The UI.** Hermes Desktop ▸ Settings ▸ Plugins ▸ enable *Bot Control
-   Center*. It hot-reloads on save; `Cmd+K ▸ Reload desktop plugins` if not.
-2. **The Home reader.** `hermes plugins enable bot-control-center`, then
+1. **The UI.** Hermes Desktop ▸ Settings ▸ Plugins ▸ enable *Bot HQ*.
+   It hot-reloads on save; `Cmd+K ▸ Reload desktop plugins` if not.
+2. **The Home reader.** `hermes plugins enable hermes-bot-hq`, then
    **restart the Hermes backend** — plugin routes mount at startup. A
    "Dashboards unavailable" banner on the fleet page means this step is
    pending; everything else still works.
@@ -55,13 +55,13 @@ Then flip both switches — they are independent and both default off:
 ## Teaching a bot to publish
 
 The package ships a `bot-home` skill, registered under the qualified name
-`bot-control-center:bot-home` (Hermes namespaces every plugin skill). Ask a bot
+`hermes-bot-hq:bot-home` (Hermes namespaces every plugin skill). Ask a bot
 to build its dashboard and it will find the contract; to make it automatic,
 attach the skill to a routine and tell that routine to rewrite `data.json` at
 the end of each run:
 
 ```bash
-hermes cron edit <job-id> --add-skill bot-control-center:bot-home
+hermes cron edit <job-id> --add-skill hermes-bot-hq:bot-home
 ```
 
 Or hand-write the two files yourself to see the shape — `examples/` has a
@@ -70,14 +70,14 @@ complete pair. The full reference is [`docs/home-contract.md`](docs/home-contrac
 ## Layout
 
 ```text
-bot-control-center/
+hermes-bot-hq/
 ├── plugin.yaml            # agent half — ships the skill
 ├── __init__.py            # register(ctx): registers skills/
 ├── skills/bot-home/       # how a bot publishes its dashboard
 ├── dashboard/
 │   ├── manifest.json      # tab hidden: this plugin's UI is the desktop half
 │   └── plugin_api.py      # reads + validates Home JSON, triggers routines
-├── desktop/plugin.js      # the Control Center page (plain ESM, no build step)
+├── desktop/plugin.js      # the Bot HQ page (plain ESM, no build step)
 ├── docs/home-contract.md  # the data contract
 ├── examples/              # a complete schema.json + data.json pair
 └── tests/                 # node:test for the UI, unittest for the reader

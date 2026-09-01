@@ -1,9 +1,9 @@
-"""Bot Control Center — agent half.
+"""Bot HQ — agent half.
 
 The plugin's real surfaces live elsewhere: the UI is a desktop plugin
 (``desktop/plugin.js``) and the Home reader is a FastAPI router
 (``dashboard/plugin_api.py``). This module exists only to hand the bundled
-``bot-home`` skill to the agent (loadable as ``bot-control-center:bot-home``),
+``bot-home`` skill to the agent (loadable as ``hermes-bot-hq:bot-home``),
 so a bot can learn the Home contract and
 publish its own dashboard without being told the file layout every time.
 """

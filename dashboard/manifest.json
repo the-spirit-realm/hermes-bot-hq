@@ -1,6 +1,6 @@
 {
-  "name": "bot-control-center",
-  "label": "Bot Control Center",
+  "name": "hermes-bot-hq",
+  "label": "Bot HQ",
   "description": "Fleet view of every bot plus per-bot dashboards published by the bots themselves.",
   "icon": "LayoutDashboard",
   "version": "0.1.0",

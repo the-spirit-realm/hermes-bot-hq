@@ -124,8 +124,8 @@ test('refreshDashboard invalidates the plugin then refetches that bot Home', asy
   await plugin.refreshDashboard('researcher')
 
   assert.deepEqual(plugin.invalidations, [
-    { kind: 'invalidate', queryKey: ['bot-control-center'] },
-    { kind: 'refetch', queryKey: ['bot-control-center', 'home', 'researcher'] }
+    { kind: 'invalidate', queryKey: ['hermes-bot-hq'] },
+    { kind: 'refetch', queryKey: ['hermes-bot-hq', 'home', 'researcher'] }
   ])
 })
 

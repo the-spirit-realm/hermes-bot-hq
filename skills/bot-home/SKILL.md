@@ -1,15 +1,15 @@
 ---
 name: bot-home
-description: Publish and maintain your own dashboard (your "Home") in the Bot Control Center. Use when asked to build, show, update, or fix your dashboard, interface, or control-center page, and at the end of a routine whose findings belong on it.
+description: Publish and maintain your own dashboard (your "Home") in Bot HQ. Use when asked to build, show, update, or fix your dashboard, interface, or fleet page, and at the end of a routine whose findings belong on it.
 ---
 
-**Skill name:** `bot-control-center:bot-home` — use this qualified name in cron
+**Skill name:** `hermes-bot-hq:bot-home` — use this qualified name in cron
 jobs (`skills` / `--add-skill`) and when calling `skill_view`. The bare name
 `bot-home` is not loadable.
 
 # Publish your Home
 
-Your Home is the dashboard the user sees when they open the Bot Control Center
+Your Home is the dashboard the user sees when they open Bot HQ
 and click you. It exists so they can check on your work without reading a chat
 transcript.
 
@@ -131,4 +131,4 @@ dead routine is visible rather than quietly serving last week's numbers.
 - **Do not rebuild the layout every run.** Touch `schema.json` only when what
   you track actually changes.
 
-Full reference: `docs/home-contract.md` in the `bot-control-center` plugin.
+Full reference: `docs/home-contract.md` in the `hermes-bot-hq` plugin.

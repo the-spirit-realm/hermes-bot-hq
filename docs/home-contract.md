@@ -1,6 +1,6 @@
 # The Home contract
 
-A **Home** is a bot's dashboard. The bot owns the data; the Control Center owns
+A **Home** is a bot's dashboard. The bot owns the data; Bot HQ owns
 the structure. That split is the whole design: a bot can refresh its numbers
 every morning without permission, but it cannot invent new UI on every load,
 so the page stays something you can learn once and trust.
@@ -17,7 +17,7 @@ Two files inside the bot's own profile directory:
 The `default` profile uses `~/.hermes/home/` instead, since that profile *is*
 the Hermes home.
 
-No registration call, no database. A bot joins the Control Center by writing
+No registration call, no database. A bot joins Bot HQ by writing
 `schema.json`; a bot without one still appears in the fleet with status,
 routines, and a chat link.
 
