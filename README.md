@@ -74,6 +74,17 @@ hermes cron edit <job-id> --add-skill hermes-bot-hq:bot-home
 The data contract is [`docs/home-contract.md`](docs/home-contract.md).
 A complete file pair lives in `examples/`.
 
+## Contribute
+
+Issues and pull requests are welcome. MIT, no CLA.
+
+Clone into `~/.hermes/plugins/hermes-bot-hq`, then do steps 2–4 above so you
+are running your checkout. How to map a change to a file, what the contract
+forbids, and ideas that would help: [CONTRIBUTING.md](CONTRIBUTING.md).
+
+Helpful starting points: shorter setup, a better place for Bot HQ inside
+Hermes, the Hermes web dashboard, or a new closed widget type.
+
 ## Layout
 
 ```text
@@ -107,8 +118,8 @@ The Python suite uses stdlib `unittest`, so it runs with the Hermes venv as-is.
 
 ## Known limits
 
-- Desktop only. The contract lives in files behind a REST endpoint, so a browser
-  surface stays possible later, but it does not exist today.
+- The fleet UI is Desktop-only today. The Home reader is already HTTP, so the
+  Hermes web dashboard is the natural next surface — it does not exist yet.
 - `~/.hermes/plugins` is scanned locally, so bots on remote gateways get roster
   and status but no dashboard.
 - The desktop SDK moves quickly; optional capabilities are feature-detected and
