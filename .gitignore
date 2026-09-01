@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+node_modules/
+
+# Placeholder UI captures — add real Desktop screenshots before going public
+docs/assets/

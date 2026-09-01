@@ -1,0 +1,66 @@
+{
+  "updated_at": "2026-08-29T06:15:00Z",
+  "stale_after_minutes": 1440,
+  "note": "themes needs a full week of runs before it fills in",
+  "widgets": {
+    "snapshot": {
+      "items": [
+        { "label": "Items", "value": "7", "delta": "+2", "tone": "good" },
+        { "label": "Launches", "value": "3", "tone": "neutral" },
+        { "label": "Papers", "value": "2", "tone": "neutral" },
+        { "label": "Delivered to writer", "value": "yes", "tone": "good" }
+      ]
+    },
+    "findings": {
+      "items": [
+        {
+          "title": "CrewAI ships durable task queues",
+          "detail": "Long-horizon runs survive a restart, which is the reliability gap most agent frameworks still have.",
+          "url": "https://example.com/crewai-durable-queues",
+          "tone": "good"
+        },
+        {
+          "title": "Anthropic publishes agent tool-use evals",
+          "detail": "First public benchmark that separates tool selection from tool argument errors.",
+          "url": "https://example.com/agent-tool-evals"
+        },
+        {
+          "title": "Uptime tooling for agent fleets is still ad hoc",
+          "detail": "Three vendors launched dashboards this month; none expose per-run cost.",
+          "tone": "warn"
+        }
+      ]
+    },
+    "volume": {
+      "series": [
+        {
+          "label": "Items",
+          "points": [
+            ["2026-08-25T06:00:00Z", 5],
+            ["2026-08-26T06:00:00Z", 6],
+            ["2026-08-27T06:00:00Z", 4],
+            ["2026-08-28T06:00:00Z", 5],
+            ["2026-08-29T06:00:00Z", 7]
+          ]
+        }
+      ]
+    },
+    "gaps": {
+      "items": [
+        {
+          "level": "warn",
+          "message": "arXiv sweep skipped today",
+          "detail": "The paper search only runs when the day of month divides by 7."
+        },
+        { "level": "info", "message": "Vendor blog posts counted as launches when no release notes exist" }
+      ]
+    },
+    "cites": {
+      "items": [
+        { "title": "CrewAI release notes", "url": "https://example.com/crewai-releases", "fetched_at": "2026-08-29T06:02:00Z" },
+        { "title": "Anthropic engineering blog", "url": "https://example.com/anthropic-blog", "fetched_at": "2026-08-29T06:05:00Z" },
+        { "title": "arXiv cs.MA new submissions", "url": "https://example.com/arxiv-csma", "fetched_at": "2026-08-22T06:04:00Z" }
+      ]
+    }
+  }
+}

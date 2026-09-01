@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "title": "Research Desk",
+  "subtitle": "Always-on AI agents: launches, papers, ops",
+  "composer": true,
+  "actions": [
+    { "id": "digest", "label": "Run digest now", "type": "run_routine", "job": "Researcher Digest", "primary": true },
+    { "id": "chat", "label": "Open chat", "type": "open_chat" }
+  ],
+  "widgets": [
+    { "id": "snapshot", "type": "kpi", "title": "Last digest", "width": "full", "empty": "No digest has run yet." },
+    { "id": "findings", "type": "list", "title": "Top findings", "width": "full" },
+    { "id": "themes", "type": "table", "title": "Themes this week", "empty": "Needs a full week of runs." },
+    { "id": "volume", "type": "timeseries", "title": "Items per digest" },
+    { "id": "gaps", "type": "alerts", "title": "Gaps and caveats" },
+    { "id": "cites", "type": "sources", "title": "Sources", "width": "full" }
+  ]
+}

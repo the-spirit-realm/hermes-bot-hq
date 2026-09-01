@@ -1,0 +1,24 @@
+"""Bot Control Center — agent half.
+
+The plugin's real surfaces live elsewhere: the UI is a desktop plugin
+(``desktop/plugin.js``) and the Home reader is a FastAPI router
+(``dashboard/plugin_api.py``). This module exists only to hand the bundled
+``bot-home`` skill to the agent (loadable as ``bot-control-center:bot-home``),
+so a bot can learn the Home contract and
+publish its own dashboard without being told the file layout every time.
+"""
+
+from __future__ import annotations
+
+from pathlib import Path
+
+
+def register(ctx) -> None:
+    skills_dir = Path(__file__).parent / "skills"
+    if not skills_dir.is_dir():
+        return
+
+    for child in sorted(skills_dir.iterdir()):
+        skill_md = child / "SKILL.md"
+        if child.is_dir() and skill_md.exists():
+            ctx.register_skill(child.name, skill_md)

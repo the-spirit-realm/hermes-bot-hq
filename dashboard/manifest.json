@@ -1,0 +1,9 @@
+{
+  "name": "bot-control-center",
+  "label": "Bot Control Center",
+  "description": "Fleet view of every bot plus per-bot dashboards published by the bots themselves.",
+  "icon": "LayoutDashboard",
+  "version": "0.1.0",
+  "api": "plugin_api.py",
+  "tab": { "hidden": true }
+}

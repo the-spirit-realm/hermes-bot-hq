@@ -1,0 +1,7 @@
+name: bot-control-center
+version: 0.1.0
+description: >-
+  Control Center for Hermes bots — a fleet page in the desktop app plus
+  per-bot dashboards published by the bots themselves.
+license: MIT
+tags: [desktop, bots, dashboard]
