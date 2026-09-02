@@ -16,6 +16,8 @@ And when you have multiple bots, Bot HQ brings them together in one place.
 
 The bot owns the data. Bot HQ turns it into an interface.
 
+![Bot HQ for Hermes bots — beyond the chat](docs/bot-hq-infographic.png)
+
 ---
 
 *Part of [AgentRealm](https://agentrealm.dev/) — tools for always-on agents like Hermes, OpenClaw, and similar.*
