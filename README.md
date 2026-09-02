@@ -1,8 +1,24 @@
 # Bot HQ
 
-One page in Hermes Desktop for every bot on your machine. Open it to see who is working, what runs next, and each bot's own dashboard — without hunting through chat transcripts.
+### **Beyond the chat.**
 
-From [AgentRealm](https://agentrealm.dev/) — tools for always-on agents (Hermes, OpenClaw, and similar).
+It’s 2026. AI can monitor systems, run routines, analyze data, manage tasks, and make decisions — yet our primary interface for all of it is still a box of text.
+
+**Why read a paragraph when you could see the answer? Why write one when you could just click?**
+
+Bot HQ gives your Hermes bots a visual, interactive interface instead of forcing everything through chat.
+
+Each bot gets its own **Home** — a dynamic dashboard built around what that bot actually does. See status, metrics, alerts, tasks, routines, and actions at a glance. **Interact with your bot directly through the interface — trigger actions, run routines, change things, and use chat when conversation is actually useful.**
+
+And when you have multiple bots, Bot HQ brings them together in one place.
+
+**Your bots. Their Homes. One HQ.**
+
+The bot owns the data. Bot HQ turns it into an interface.
+
+---
+
+*Part of [AgentRealm](https://agentrealm.dev/) — tools for always-on agents like Hermes, OpenClaw, and similar.*
 
 ## Set up
 
