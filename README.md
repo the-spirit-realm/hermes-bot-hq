@@ -50,6 +50,12 @@ Click **Bot HQ** in the sidebar. (If it is missing, press `Cmd+K`, run **Reload 
 
 You should see every local bot. If a yellow **Dashboards unavailable** bar appears at the top, step 3 did not take — enable the plugin and quit/reopen once more.
 
+This is an early cut — more features are coming. On GitHub, **Watch → Custom → Releases** so you hear about them; a **star** is appreciated if it already helps, but it does not subscribe you to updates. To pull a new version onto your machine:
+
+```bash
+hermes plugins update hermes-bot-hq
+```
+
 ## Get a dashboard on a bot
 
 1. Click the bot.
