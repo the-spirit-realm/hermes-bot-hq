@@ -36,19 +36,23 @@ hermes plugins install the-spirit-realm/hermes-bot-hq
 
 In Hermes Desktop: **Settings → Plugins → Bot HQ**.
 
-**3. Turn on the dashboard reader**
+**3. Turn on the dashboard reader for every bot**
 
 ```bash
-hermes plugins enable hermes-bot-hq
+hermes hermes-bot-hq setup
 ```
 
-Then fully quit Hermes and open it again. The reader only starts with the backend, so a reload of the page is not enough.
+Sets it up on all your bots at once (and restarts what it needs to). Run it again any time you add a new bot — it only touches the ones that need it.
+
+Prefer to do it by hand for one bot? See [Manual setup](#manual-setup).
 
 **4. Open it**
 
 Click **Bot HQ** in the sidebar. (If it is missing, press `Cmd+K`, run **Reload desktop plugins**, and look again.)
 
-You should see every local bot. If a yellow **Dashboards unavailable** bar appears at the top, step 3 did not take — enable the plugin and quit/reopen once more.
+You should see every local bot. If a yellow **Dashboards unavailable** bar appears at the top, run `hermes hermes-bot-hq setup` again.
+
+**Adding a bot later?** Just run `hermes hermes-bot-hq setup` again — same command, it only sets up the new one.
 
 This is an early cut — more features are coming. On GitHub, **Watch → Custom → Releases** so you hear about them; a **star** is appreciated if it already helps, but it does not subscribe you to updates. To pull a new version onto your machine:
 
@@ -75,6 +79,17 @@ hermes cron edit <job-id> --add-skill hermes-bot-hq:bot-home
 - **From Desktop, no terminal:** paste `hermes://plugin/install?repo=the-spirit-realm/hermes-bot-hq` into Hermes. That is an install link the app handles, not a website.
 - **From a git clone:** put the repo at `~/.hermes/plugins/hermes-bot-hq`, then do steps 2–4 above.
 
+## Manual setup
+
+Prefer to enable it on one bot by hand instead of running `setup`?
+
+```bash
+ln -s ~/.hermes/plugins/hermes-bot-hq ~/.hermes/profiles/<bot>/plugins/hermes-bot-hq
+hermes -p <bot> plugins enable hermes-bot-hq --no-allow-tool-override
+```
+
+Then fully quit and reopen Hermes so that bot's backend restarts.
+
 ## What you get
 
 - A fleet page: every Hermes profile, no signup or register step.
@@ -96,8 +111,9 @@ Helpful starting points: shorter setup, a better place for Bot HQ inside Hermes,
 
 ```text
 hermes-bot-hq/
-├── plugin.yaml            # agent half — ships the skill
-├── __init__.py            # register(ctx): registers skills/
+├── plugin.yaml            # agent half — ships the skill + the setup command
+├── __init__.py            # register(ctx): registers skills/ and `hermes hermes-bot-hq`
+├── setup.py               # `hermes hermes-bot-hq setup` — onboard every bot in one step
 ├── skills/bot-home/       # how a bot publishes its dashboard
 ├── dashboard/
 │   ├── manifest.json      # tab hidden: this plugin's UI is the desktop half
