@@ -14,15 +14,4 @@ Daily snapshots of this repository's GitHub Insights traffic APIs (views, clones
 
 Do not merge this branch into the default branch. It is unrelated history, not plugin source.
 
-<!-- sources -->
-<sub>
-
-**Sources**
-
-- **2026-09-07 onward:** GitHub traffic API via the archive workflow (exact).
-- **2026-08-20 through 2026-09-03:** read from Insights screenshots (3 Sep and 4 Sep 2026). Daily spike values are integers estimated from the chart scales so window totals match (views 148 then 258; clones 90 then 125).
-- **2026-09-05 and 2026-09-06 clones:** unique cloners from a 20 Sep screenshot. Clone *count* was not in that chart, so `count` is stored equal to `uniques` (a lower bound).
-- **2026-09-04 views/clones** and **2026-09-05/06 views** were not in the screenshots (gap, not zero).
-
-</sub>
-<!-- /sources -->
+_Sources: API from 7 Sep 2026 onward. 20 Aug–3 Sep from Insights screenshots (estimated). 5–6 Sep clone uniques from a screenshot (count stored as uniques). 4 Sep and 5–6 Sep views are a gap, not zero._
