@@ -1,0 +1,80 @@
+# Maintainer-only traffic archive. See .github/TRAFFIC.md
+#
+# Requires repo secret TRAFFIC_TOKEN (fine-grained PAT with Administration: Read
+# and Contents: Read). GITHUB_TOKEN cannot read /repos/{owner}/{repo}/traffic/*.
+# Schedules only run from the default branch.
+
+name: Archive GitHub traffic
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: archive-traffic
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require TRAFFIC_TOKEN
+        id: token
+        env:
+          TRAFFIC_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+        run: |
+          if [ -z "$TRAFFIC_TOKEN" ]; then
+            echo "::notice::TRAFFIC_TOKEN is not set. Skipping; GITHUB_TOKEN cannot read traffic APIs. See .github/TRAFFIC.md"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout default branch (script)
+        if: steps.token.outputs.skip == 'false'
+        uses: actions/checkout@v4
+        with:
+          path: source
+          persist-credentials: false
+
+      - name: Checkout or create orphan traffic branch
+        if: steps.token.outputs.skip == 'false'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p traffic
+          cd traffic
+          git init
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git remote add origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git fetch --depth=1 origin traffic; then
+            git checkout -B traffic FETCH_HEAD
+          else
+            git checkout --orphan traffic
+          fi
+
+      - name: Archive traffic
+        if: steps.token.outputs.skip == 'false'
+        env:
+          TRAFFIC_TOKEN: ${{ secrets.TRAFFIC_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: python3 source/.github/scripts/archive_github_traffic.py traffic
+
+      - name: Commit and push traffic branch
+        if: steps.token.outputs.skip == 'false'
+        working-directory: traffic
+        run: |
+          set -euo pipefail
+          git add -A
+          if git diff --cached --quiet; then
+            echo "No traffic file changes"
+            exit 0
+          fi
+          git commit -m "Archive GitHub traffic $(date -u +%F)"
+          git push -u origin HEAD:traffic
