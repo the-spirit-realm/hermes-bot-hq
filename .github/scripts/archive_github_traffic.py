@@ -13,12 +13,14 @@ from pathlib import Path
 
 API_VERSION = "2022-11-28"
 USER_AGENT = "hermes-bot-hq-traffic-archive"
-README = """# GitHub traffic archive
-
-Daily snapshots of this repository's GitHub Insights traffic APIs (views, clones, popular paths and referrers). GitHub only retains 14 days in the UI and REST API; this branch keeps a longer series.
+README_INTRO = """Daily snapshots of this repository's GitHub Insights traffic APIs (views, clones, popular paths and referrers). GitHub only retains 14 days in the UI and REST API; this branch keeps a longer series.
 
 Do not merge this branch into the default branch. It is unrelated history, not plugin source.
 """
+SUMMARY_START = "<!-- unique-cloners -->"
+SUMMARY_END = "<!-- /unique-cloners -->"
+SOURCES_START = "<!-- sources -->"
+SOURCES_END = "<!-- /sources -->"
 
 
 def api_get(repo: str, path: str, token: str):
@@ -69,6 +71,91 @@ def upsert_series(existing: dict, payload: dict, series_key: str) -> dict:
     return dict(sorted(merged.items()))
 
 
+def sum_daily_uniques(series: dict) -> int:
+    total = 0
+    for row in series.values():
+        if isinstance(row, dict):
+            total += int(row.get("uniques") or 0)
+    return total
+
+
+def unique_cloners_block(total: int) -> str:
+    return (
+        f"{SUMMARY_START}\n"
+        f'<div align="center">\n'
+        f'<font size="7"><strong>{total:,}</strong></font><br>\n'
+        f'<font size="5">Unique cloners</font><br>\n'
+        f"<sub>Sum of daily uniques, not deduplicated across days.</sub>\n"
+        f"</div>\n"
+        f"{SUMMARY_END}\n"
+    )
+
+
+def extract_marked(text: str, start: str, end: str) -> str | None:
+    if start not in text or end not in text:
+        return None
+    _, rest = text.split(start, 1)
+    inner, _ = rest.split(end, 1)
+    return inner.strip()
+
+
+def strip_sub_wrapper(text: str) -> str:
+    body = text.strip()
+    while body.startswith("<sub>") and body.endswith("</sub>"):
+        body = body[len("<sub>") : -len("</sub>")].strip()
+    return body
+
+
+def extract_sources(text: str) -> str:
+    marked = extract_marked(text, SOURCES_START, SOURCES_END)
+    if marked:
+        return strip_sub_wrapper(marked)
+    if "**Sources**" not in text:
+        return ""
+    _, rest = text.split("**Sources**", 1)
+    lines = ["**Sources**"]
+    for line in rest.splitlines():
+        stripped = line.strip()
+        if stripped.startswith("Do not merge"):
+            break
+        if stripped.startswith("<!-- unique-cloners"):
+            break
+        if stripped.startswith("<!-- /sources"):
+            break
+        lines.append(line.rstrip())
+    return strip_sub_wrapper("\n".join(lines).strip())
+
+
+def sources_block(sources: str) -> str:
+    if not sources:
+        return ""
+    return (
+        f"{SOURCES_START}\n"
+        f"<sub>\n\n"
+        f"{sources.strip()}\n\n"
+        f"</sub>\n"
+        f"{SOURCES_END}\n"
+    )
+
+
+def upsert_readme(path: Path, clones: dict) -> None:
+    existing = path.read_text(encoding="utf-8") if path.exists() else ""
+    sources = extract_sources(existing)
+    parts = [
+        "# GitHub traffic archive\n",
+        unique_cloners_block(sum_daily_uniques(clones)),
+        "<br>\n",
+        README_INTRO,
+    ]
+    footer = sources_block(sources)
+    if footer:
+        parts.append(footer)
+    text = "\n".join(parts)
+    if not text.endswith("\n"):
+        text += "\n"
+    path.write_text(text, encoding="utf-8")
+
+
 def main() -> None:
     token = os.environ.get("TRAFFIC_TOKEN", "").strip()
     repo = os.environ.get("GITHUB_REPOSITORY", "").strip()
@@ -86,13 +173,12 @@ def main() -> None:
     paths = api_get(repo, "/traffic/popular/paths", token)
 
     dump_json(out / "views.json", upsert_series(load_json(out / "views.json"), views, "views"))
-    dump_json(out / "clones.json", upsert_series(load_json(out / "clones.json"), clones, "clones"))
+    clones_series = upsert_series(load_json(out / "clones.json"), clones, "clones")
+    dump_json(out / "clones.json", clones_series)
     dump_json(out / "snapshots" / f"{today}-referrers.json", referrers)
     dump_json(out / "snapshots" / f"{today}-paths.json", paths)
 
-    readme = out / "README.md"
-    if not readme.exists():
-        readme.write_text(README, encoding="utf-8")
+    upsert_readme(out / "README.md", clones_series)
 
 
 if __name__ == "__main__":
