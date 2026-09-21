@@ -63,7 +63,7 @@ propose the widget. Do not work around it by stuffing a table into markdown.
   "title": "Research Desk",
   "subtitle": "What I'm tracking, refreshed each morning",
   "composer": false,
-  "actions": [
+  "toolbar": [
     { "id": "brief", "label": "Run now", "type": "run_routine", "job": "Researcher Digest", "primary": true }
   ],
   "widgets": [
@@ -76,9 +76,13 @@ propose the widget. Do not work around it by stuffing a table into markdown.
 
 - `widgets`: up to 24. Render order is array order. `id` must be unique and
   lowercase (`[a-z0-9_-]`). `width` is `half` (default) or `full`.
-- `actions`: up to 8, and only these four types —
-  `run_routine` (needs `job`: one of your cron jobs, by name or id),
-  `open_chat`, `open_path` (needs `path`), `open_url` (needs `http(s)` `url`).
+- `toolbar` (or `actions` — same strip): up to 8 page-level buttons, always
+  above the cards. Types: `run_routine` (needs `job`), `open_chat`,
+  `open_path` (needs `path`), `open_url` (needs `http(s)` `url`),
+  `send_prompt` (needs `prompt`).
+- Need a clickable move the user will repeat? Read `buttons.md` in this skill
+  folder. If unsure, put page-level clicks on `toolbar`. Composer still works.
+- Do not put `prompt` in `data.json`. Do not rebuild schema every run.
 - `composer: true` adds a single input on your page so the user can prompt you
   without opening a chat. Set it only if a prompt is genuinely part of using
   your dashboard — most bots should leave it `false`.
@@ -89,11 +93,12 @@ propose the widget. Do not work around it by stuffing a table into markdown.
 | --- | --- | --- |
 | `kpi` | `items: [{ label, value, delta?, tone? }]` | 12 |
 | `table` | `columns: [str]`, `rows: [[cell]]` | 12 cols, 200 rows |
-| `list` | `items: [{ title, detail?, tone?, url? }]` | 200 |
+| `list` | `items: [{ id?, title, detail?, tone?, url?, buttons? }]` | 200 |
 | `markdown` | `text: str` (paragraphs and `-` bullets only) | 20,000 chars |
 | `timeseries` | `series: [{ label, points: [[x, y]] }]` | 6 series, 500 points |
 | `sources` | `items: [{ title, url?, fetched_at? }]` | 100 |
-| `alerts` | `items: [{ level, message, detail? }]` | 50 |
+| `alerts` | `items: [{ id?, level, message, detail?, buttons? }]` | 50 |
+| `buttons` | none — declare `buttons` on the widget in schema | 8 |
 
 `tone` is `good` / `warn` / `bad` / `neutral`. `level` is `info` / `warn` /
 `error`. A `timeseries` `x` is a number or an ISO-8601 timestamp.
@@ -131,4 +136,5 @@ dead routine is visible rather than quietly serving last week's numbers.
 - **Do not rebuild the layout every run.** Touch `schema.json` only when what
   you track actually changes.
 
-Full reference: `docs/home-contract.md` in the `hermes-bot-hq` plugin.
+Full reference: `docs/home-contract.md` in the `hermes-bot-hq` plugin. Copy-paste
+button recipes: `buttons.md` in this skill folder.

@@ -14,20 +14,26 @@
     "findings": {
       "items": [
         {
+          "id": "crewai-queues",
           "title": "CrewAI ships durable task queues",
           "detail": "Long-horizon runs survive a restart, which is the reliability gap most agent frameworks still have.",
           "url": "https://example.com/crewai-durable-queues",
-          "tone": "good"
+          "tone": "good",
+          "buttons": ["genuine", "escalate"]
         },
         {
+          "id": "anthropic-evals",
           "title": "Anthropic publishes agent tool-use evals",
           "detail": "First public benchmark that separates tool selection from tool argument errors.",
-          "url": "https://example.com/agent-tool-evals"
+          "url": "https://example.com/agent-tool-evals",
+          "buttons": ["genuine"]
         },
         {
+          "id": "uptime-adhoc",
           "title": "Uptime tooling for agent fleets is still ad hoc",
           "detail": "Three vendors launched dashboards this month; none expose per-run cost.",
-          "tone": "warn"
+          "tone": "warn",
+          "buttons": ["escalate"]
         }
       ]
     },

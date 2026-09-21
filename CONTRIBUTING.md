@@ -24,7 +24,7 @@ restart — those routes mount at startup.
 | --- | --- | --- |
 | Fleet page, bot detail, empty Home prompt | `desktop/plugin.js` | `tests/*.test.mjs` |
 | Home validation, REST, run-routine | `dashboard/plugin_api.py` | `tests/test_home_validation.py` |
-| What bots are taught | `skills/bot-home/SKILL.md` | keep [`docs/home-contract.md`](docs/home-contract.md) in sync |
+| What bots are taught | `skills/bot-home/SKILL.md` (+ `buttons.md`) | keep [`docs/home-contract.md`](docs/home-contract.md) in sync |
 | Example dashboard | `examples/` | — |
 
 The Python half only reads and validates Home files. It never writes them.
@@ -38,9 +38,14 @@ These are the design, not leftover constraints:
 - The bot owns **data**. This plugin owns **structure**.
 - Widget types are a closed set. A new type is a real contribution (schema,
   renderer, skill, contract, tests). Shipping HTML or JavaScript through a
-  Home is not.
-- Actions are the four named verbs (`run_routine`, `open_chat`, `open_path`,
-  `open_url`). Never a command string.
+  Home is not. The user learns one set of moves per bot; that is why the
+  vocabulary stays small — a purpose-built bot has a fixed job, not a new
+  UI every morning.
+- Buttons are the named verbs (`run_routine`, `open_chat`, `open_path`,
+  `open_url`, `send_prompt`). A declared `prompt` is allowed; a shell
+  command, HTML, or a prompt inside `data.json` is not. The top strip is
+  `toolbar` (`actions` is the same list, kept so upgrades do not blank
+  existing Homes).
 
 ## Tests
 
@@ -71,10 +76,10 @@ nothing extra to pip-install.
   site) is in scope.
 - **Another example Home.** `examples/` is one research-desk pair. A second
   complete `schema.json` + `data.json` for a different kind of bot (still
-  only the seven widget types) is a good first PR — keep `examples/README.md`
+  only the closed widget types) is a good first PR — keep `examples/README.md`
   in sync.
 - **A new closed widget type** — if a real bot cannot say what it needs with
-  the current seven.
+  the current set.
 
 Open an issue if you are unsure whether an idea fits. Better a short
 conversation than a PR that has to fight the contract.

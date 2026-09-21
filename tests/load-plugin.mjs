@@ -27,6 +27,8 @@ const EXPORTED = [
   'homeSummary',
   'routineSummary',
   'performAction',
+  'promptForButton',
+  'runDeclaredButton',
   'sendPrompt',
   'refreshDashboard',
   'isCliExecTimeout',

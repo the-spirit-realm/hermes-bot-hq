@@ -81,6 +81,8 @@ test('emptiness is per widget type, so a blank card never looks confident', () =
   assert.equal(widgetHasContent('timeseries', { series: [{ points: [[0, 1]] }] }), false)
   assert.equal(widgetHasContent('timeseries', { series: [{ points: [[0, 1], [1, 2]] }] }), true)
   assert.equal(widgetHasContent('list', null), false)
+  assert.equal(widgetHasContent('buttons', null, { buttons: [{ id: 'r' }] }), true)
+  assert.equal(widgetHasContent('buttons', null, { buttons: [] }), false)
 })
 
 test('numbers stay readable at both ends of the scale', () => {
