@@ -951,8 +951,14 @@ function WidgetCard({ widget, payload, bot, processing = false, setProcessing, h
   return h(
     'section',
     {
-      className: cn('flex flex-col gap-3 rounded-lg border p-4', widget.width === 'full' && 'sm:col-span-2'),
-      style: { borderColor: 'var(--ui-stroke-secondary)' }
+      className: 'flex flex-col gap-3 rounded-lg border p-4',
+      // Inline span: plugin class names are not in Desktop's Tailwind scan, so
+      // `sm:col-span-2` never exists in the stylesheet. `sm:grid-cols-2` does
+      // (used in-app), which is why half-width cards wrap and full-width ones did not.
+      style: {
+        borderColor: 'var(--ui-stroke-secondary)',
+        ...(widget.width === 'full' ? { gridColumn: '1 / -1' } : {})
+      }
     },
     h(
       'div',
