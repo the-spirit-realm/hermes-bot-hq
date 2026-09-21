@@ -27,6 +27,7 @@ GitHub may delay scheduled jobs by several minutes.
 ## What gets written on `traffic`
 
 - `views.json` / `clones.json` — UTC date keys, `{ "count", "uniques" }`. Each run **upserts** GitHub’s overlapping 14-day window (overwrites those dates; older keys stay).
+- `README.md` — large unique-cloners total (sum of daily uniques) at the top; sources in fine print at the bottom.
 - `snapshots/YYYY-MM-DD-referrers.json` and `...-paths.json` — that day’s top-10 snapshot (do not sum across days).
 
 Inspect with GitHub’s branch dropdown or:
