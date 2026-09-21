@@ -21,6 +21,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -39,10 +40,12 @@ MAX_WIDGETS = 24
 MAX_ACTIONS = 8
 DEFAULT_STALE_AFTER_MINUTES = 24 * 60
 
-WIDGET_TYPES = frozenset({"kpi", "table", "list", "markdown", "timeseries", "sources", "alerts"})
-ACTION_TYPES = frozenset({"run_routine", "open_chat", "open_path", "open_url"})
+WIDGET_TYPES = frozenset({"kpi", "table", "list", "markdown", "timeseries", "sources", "alerts", "buttons"})
+WIDGETS_WITH_BUTTONS = frozenset({"buttons", "list", "alerts"})
+ACTION_TYPES = frozenset({"run_routine", "open_chat", "open_path", "open_url", "send_prompt"})
 TONES = frozenset({"good", "warn", "bad", "neutral"})
 ALERT_LEVELS = frozenset({"info", "warn", "error"})
+ITEM_ID_RE = re.compile(r"^[a-z0-9_-]+$")
 
 CAPS = {
     "kpi_items": 12,
@@ -54,6 +57,8 @@ CAPS = {
     "points": 500,
     "sources": 100,
     "alerts": 50,
+    "prompt_chars": 4_000,
+    "line_buttons": 3,
 }
 
 
@@ -145,6 +150,107 @@ def _parse_ts(value: Any) -> Optional[datetime]:
     return stamp if stamp.tzinfo else stamp.replace(tzinfo=timezone.utc)
 
 
+def _parse_buttons(raw: Any, warnings: List[str], where: str) -> List[Dict[str, Any]]:
+    """Normalize one list of declared buttons. Unknown types are dropped."""
+    if raw is None:
+        return []
+
+    if not isinstance(raw, list):
+        warnings.append(f"{where} must be a list")
+        return []
+
+    if len(raw) > MAX_ACTIONS:
+        warnings.append(f"{where} has {len(raw)} entries; only the first {MAX_ACTIONS} are shown")
+        raw = raw[:MAX_ACTIONS]
+
+    buttons: List[Dict[str, Any]] = []
+
+    for index, entry in enumerate(raw):
+        if not isinstance(entry, dict):
+            warnings.append(f"{where} #{index + 1} is not an object")
+            continue
+
+        action_type = str(entry.get("type") or "").strip()
+
+        if action_type not in ACTION_TYPES:
+            shown = action_type or "(missing)"
+            warnings.append(f"action #{index + 1} has unsupported type '{shown}'")
+            continue
+
+        action = {
+            "id": str(entry.get("id") or f"action-{index + 1}").strip(),
+            "label": _clip(entry.get("label"), 40) or action_type.replace("_", " "),
+            "type": action_type,
+            "primary": bool(entry.get("primary")),
+        }
+
+        # Each type carries exactly one target, and it is validated here so the
+        # renderer never has to guess what a button means.
+        if action_type == "run_routine":
+            job = str(entry.get("job") or "").strip()
+
+            if not job:
+                warnings.append(f"action '{action['id']}' is run_routine without a job")
+                continue
+
+            action["job"] = job
+        elif action_type == "open_path":
+            path = str(entry.get("path") or "").strip()
+
+            if not path:
+                warnings.append(f"action '{action['id']}' is open_path without a path")
+                continue
+
+            action["path"] = os.path.expanduser(path)
+        elif action_type == "open_url":
+            url = str(entry.get("url") or "").strip()
+
+            if not url.startswith(("http://", "https://")):
+                warnings.append(f"action '{action['id']}' must be an http(s) url")
+                continue
+
+            action["url"] = url
+        elif action_type == "send_prompt":
+            prompt = str(entry.get("prompt") or "").strip()
+
+            if not prompt:
+                warnings.append(f"action '{action['id']}' is send_prompt without a prompt")
+                continue
+
+            if len(prompt) > CAPS["prompt_chars"]:
+                warnings.append(
+                    f"action '{action['id']}' prompt is {len(prompt)} chars; truncated to {CAPS['prompt_chars']}"
+                )
+
+            action["prompt"] = prompt[: CAPS["prompt_chars"]]
+
+        buttons.append(action)
+
+    return buttons
+
+
+def _toolbar_source(raw: Dict[str, Any], warnings: List[str]) -> Tuple[List[Any], str]:
+    """Pick the page strip. ``actions`` wins when both lists have entries."""
+    raw_actions = raw.get("actions")
+    raw_toolbar = raw.get("toolbar")
+
+    if raw_actions is not None and not isinstance(raw_actions, list):
+        warnings.append("schema.actions must be a list")
+        raw_actions = None
+
+    if raw_toolbar is not None and not isinstance(raw_toolbar, list):
+        warnings.append("schema.toolbar must be a list")
+        raw_toolbar = None
+
+    if raw_actions:
+        return raw_actions, "schema.actions"
+
+    if raw_toolbar is not None:
+        return raw_toolbar, "schema.toolbar"
+
+    return raw_actions or [], "schema.actions"
+
+
 def validate_schema(raw: Any) -> Tuple[Dict[str, Any], List[str]]:
     """Normalize ``schema.json`` into exactly what the renderer expects.
 
@@ -202,77 +308,24 @@ def validate_schema(raw: Any) -> Tuple[Dict[str, Any], List[str]]:
             shown = widget_type or "(missing)"
             warnings.append(f"widget '{widget_id}' has unsupported type '{shown}'")
 
-        widgets.append(
-            {
-                "id": widget_id,
-                "type": widget_type,
-                "supported": supported,
-                "title": _clip(entry.get("title"), 80),
-                "width": "full" if str(entry.get("width") or "").strip() == "full" else "half",
-                "empty": _clip(entry.get("empty"), 160),
-            }
-        )
-
-    actions: List[Dict[str, Any]] = []
-    raw_actions = raw.get("actions")
-
-    if raw_actions is None:
-        raw_actions = []
-    elif not isinstance(raw_actions, list):
-        warnings.append("schema.actions must be a list")
-        raw_actions = []
-
-    if len(raw_actions) > MAX_ACTIONS:
-        warnings.append(f"schema.actions has {len(raw_actions)} entries; only the first {MAX_ACTIONS} are shown")
-        raw_actions = raw_actions[:MAX_ACTIONS]
-
-    for index, entry in enumerate(raw_actions):
-        if not isinstance(entry, dict):
-            warnings.append(f"action #{index + 1} is not an object")
-            continue
-
-        action_type = str(entry.get("type") or "").strip()
-
-        if action_type not in ACTION_TYPES:
-            shown = action_type or "(missing)"
-            warnings.append(f"action #{index + 1} has unsupported type '{shown}'")
-            continue
-
-        action = {
-            "id": str(entry.get("id") or f"action-{index + 1}").strip(),
-            "label": _clip(entry.get("label"), 40) or action_type.replace("_", " "),
-            "type": action_type,
-            "primary": bool(entry.get("primary")),
+        widget = {
+            "id": widget_id,
+            "type": widget_type,
+            "supported": supported,
+            "title": _clip(entry.get("title"), 80),
+            "width": "full" if str(entry.get("width") or "").strip() == "full" else "half",
+            "empty": _clip(entry.get("empty"), 160),
         }
 
-        # Each type carries exactly one target, and it is validated here so the
-        # renderer never has to guess what a button means.
-        if action_type == "run_routine":
-            job = str(entry.get("job") or "").strip()
+        if widget_type in WIDGETS_WITH_BUTTONS:
+            widget["buttons"] = _parse_buttons(entry.get("buttons"), warnings, f"widget '{widget_id}' buttons")
+        elif entry.get("buttons") is not None:
+            warnings.append(f"widget '{widget_id}' cannot declare buttons")
 
-            if not job:
-                warnings.append(f"action '{action['id']}' is run_routine without a job")
-                continue
+        widgets.append(widget)
 
-            action["job"] = job
-        elif action_type == "open_path":
-            path = str(entry.get("path") or "").strip()
-
-            if not path:
-                warnings.append(f"action '{action['id']}' is open_path without a path")
-                continue
-
-            action["path"] = os.path.expanduser(path)
-        elif action_type == "open_url":
-            url = str(entry.get("url") or "").strip()
-
-            if not url.startswith(("http://", "https://")):
-                warnings.append(f"action '{action['id']}' must be an http(s) url")
-                continue
-
-            action["url"] = url
-
-        actions.append(action)
+    strip, strip_name = _toolbar_source(raw, warnings)
+    actions = _parse_buttons(strip, warnings, strip_name)
 
     return (
         {
@@ -281,6 +334,7 @@ def validate_schema(raw: Any) -> Tuple[Dict[str, Any], List[str]]:
             "subtitle": _clip(raw.get("subtitle"), 160),
             "composer": bool(raw.get("composer")),
             "actions": actions,
+            "toolbar": actions,
             "widgets": widgets,
         },
         warnings,
@@ -334,7 +388,45 @@ def _validate_table(payload: Dict[str, Any], warn) -> Dict[str, Any]:
     return {"columns": columns, "rows": rows}
 
 
-def _validate_list(payload: Dict[str, Any], warn) -> Dict[str, Any]:
+def _item_button_ids(entry: Dict[str, Any], allowed: List[Dict[str, Any]], warn, seen_ids: set) -> Tuple[str, List[str]]:
+    """Keep line-button refs that the widget declared. No prompt text from data."""
+    raw_id = str(entry.get("id") or "").strip()
+    raw_buttons = entry.get("buttons")
+
+    if raw_buttons is None:
+        return (raw_id if raw_id and ITEM_ID_RE.match(raw_id) else ""), []
+
+    if not isinstance(raw_buttons, list):
+        warn("item buttons must be a list of ids")
+        return "", []
+
+    if not raw_id or not ITEM_ID_RE.match(raw_id):
+        warn("item buttons need an id matching [a-z0-9_-]")
+        return "", []
+
+    if raw_id in seen_ids:
+        warn(f"item id '{raw_id}' is duplicated; line buttons dropped on the duplicate")
+        return "", []
+
+    seen_ids.add(raw_id)
+    allowed_ids = {button["id"] for button in allowed}
+    picked: List[str] = []
+
+    for ref in raw_buttons[: CAPS["line_buttons"]]:
+        button_id = str(ref or "").strip()
+
+        if button_id in allowed_ids and button_id not in picked:
+            picked.append(button_id)
+        elif button_id:
+            warn(f"item '{raw_id}' names unknown button '{button_id}'")
+
+    if len(raw_buttons) > CAPS["line_buttons"]:
+        warn(f"item '{raw_id}' has {len(raw_buttons)} buttons; showing {CAPS['line_buttons']}")
+
+    return raw_id, picked
+
+
+def _validate_list(payload: Dict[str, Any], warn, allowed_buttons: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     items = payload.get("items")
     items = items if isinstance(items, list) else []
 
@@ -342,6 +434,8 @@ def _validate_list(payload: Dict[str, Any], warn) -> Dict[str, Any]:
         warn(f"list has {len(items)} items; showing {CAPS['list_items']}")
 
     out = []
+    seen_ids: set = set()
+    allowed_buttons = allowed_buttons or []
 
     for entry in items[: CAPS["list_items"]]:
         if not isinstance(entry, dict):
@@ -349,14 +443,21 @@ def _validate_list(payload: Dict[str, Any], warn) -> Dict[str, Any]:
 
         tone = str(entry.get("tone") or "neutral")
         url = str(entry.get("url") or "").strip()
-        out.append(
-            {
-                "title": _clip(entry.get("title"), 160),
-                "detail": _clip(entry.get("detail"), 400),
-                "tone": tone if tone in TONES else "neutral",
-                "url": url if url.startswith(("http://", "https://")) else "",
-            }
-        )
+        item_id, buttons = _item_button_ids(entry, allowed_buttons, warn, seen_ids)
+        item = {
+            "title": _clip(entry.get("title"), 160),
+            "detail": _clip(entry.get("detail"), 400),
+            "tone": tone if tone in TONES else "neutral",
+            "url": url if url.startswith(("http://", "https://")) else "",
+        }
+
+        if item_id:
+            item["id"] = item_id
+
+        if buttons:
+            item["buttons"] = buttons
+
+        out.append(item)
 
     return {"items": out}
 
@@ -450,7 +551,7 @@ def _validate_sources(payload: Dict[str, Any], warn) -> Dict[str, Any]:
     return {"items": out}
 
 
-def _validate_alerts(payload: Dict[str, Any], warn) -> Dict[str, Any]:
+def _validate_alerts(payload: Dict[str, Any], warn, allowed_buttons: Optional[List[Dict[str, Any]]] = None) -> Dict[str, Any]:
     items = payload.get("items")
     items = items if isinstance(items, list) else []
 
@@ -458,21 +559,34 @@ def _validate_alerts(payload: Dict[str, Any], warn) -> Dict[str, Any]:
         warn(f"alerts has {len(items)} items; showing {CAPS['alerts']}")
 
     out = []
+    seen_ids: set = set()
+    allowed_buttons = allowed_buttons or []
 
     for entry in items[: CAPS["alerts"]]:
         if not isinstance(entry, dict):
             continue
 
         level = str(entry.get("level") or "info")
-        out.append(
-            {
-                "level": level if level in ALERT_LEVELS else "info",
-                "message": _clip(entry.get("message"), 300),
-                "detail": _clip(entry.get("detail"), 600),
-            }
-        )
+        item_id, buttons = _item_button_ids(entry, allowed_buttons, warn, seen_ids)
+        item = {
+            "level": level if level in ALERT_LEVELS else "info",
+            "message": _clip(entry.get("message"), 300),
+            "detail": _clip(entry.get("detail"), 600),
+        }
+
+        if item_id:
+            item["id"] = item_id
+
+        if buttons:
+            item["buttons"] = buttons
+
+        out.append(item)
 
     return {"items": out}
+
+
+def _validate_buttons(_payload: Dict[str, Any], _warn) -> Dict[str, Any]:
+    return {}
 
 
 _VALIDATORS = {
@@ -483,6 +597,7 @@ _VALIDATORS = {
     "timeseries": _validate_timeseries,
     "sources": _validate_sources,
     "alerts": _validate_alerts,
+    "buttons": _validate_buttons,
 }
 
 
@@ -513,6 +628,9 @@ def validate_data(raw: Any, schema: Dict[str, Any]) -> Tuple[Dict[str, Any], Lis
         if not widget["supported"]:
             continue
 
+        if widget["type"] == "buttons":
+            continue
+
         payload = widgets_raw.get(widget_id)
 
         if payload is None:
@@ -525,7 +643,10 @@ def validate_data(raw: Any, schema: Dict[str, Any]) -> Tuple[Dict[str, Any], Lis
         def warn(message: str, _id: str = widget_id) -> None:
             warnings.append(f"widget '{_id}': {message}")
 
-        widgets[widget_id] = _VALIDATORS[widget["type"]](payload, warn)
+        if widget["type"] in ("list", "alerts"):
+            widgets[widget_id] = _VALIDATORS[widget["type"]](payload, warn, widget.get("buttons") or [])
+        else:
+            widgets[widget_id] = _VALIDATORS[widget["type"]](payload, warn)
 
     updated = _parse_ts(raw.get("updated_at"))
     stale_after = raw.get("stale_after_minutes")

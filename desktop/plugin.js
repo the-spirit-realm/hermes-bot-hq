@@ -615,8 +615,9 @@ function TableWidget({ payload }) {
   )
 }
 
-function ListWidget({ payload }) {
+function ListWidget({ payload, widget, bot, processing, setProcessing, homeUpdatedAt }) {
   const items = payload?.items || []
+  const declared = widget?.buttons || []
 
   return h(
     'div',
@@ -624,7 +625,7 @@ function ListWidget({ payload }) {
     ...items.map((item, index) =>
       h(
         'div',
-        { key: `${item.title}-${index}`, className: 'flex items-start gap-2' },
+        { key: item.id || `${item.title}-${index}`, className: 'flex items-start gap-2' },
         h(StatusDot, { tone: TONE_DOT[item.tone] || 'muted', className: 'mt-1.5' }),
         h(
           'div',
@@ -643,7 +644,15 @@ function ListWidget({ payload }) {
           item.detail
             ? h('div', { className: 'text-[0.6875rem]', style: { color: 'var(--ui-text-tertiary)' } }, item.detail)
             : null
-        )
+        ),
+        h(LineButtons, {
+          bot,
+          declared,
+          item,
+          processing,
+          setProcessing,
+          homeUpdatedAt
+        })
       )
     )
   )
@@ -808,8 +817,9 @@ function SourcesWidget({ payload }) {
   )
 }
 
-function AlertsWidget({ payload }) {
+function AlertsWidget({ payload, widget, bot, processing, setProcessing, homeUpdatedAt }) {
   const items = payload?.items || []
+  const declared = widget?.buttons || []
 
   return h(
     'div',
@@ -817,7 +827,7 @@ function AlertsWidget({ payload }) {
     ...items.map((item, index) =>
       h(
         'div',
-        { key: `${item.message}-${index}`, className: 'flex items-start gap-2' },
+        { key: item.id || `${item.message}-${index}`, className: 'flex items-start gap-2' },
         h(StatusDot, { tone: LEVEL_DOT[item.level] || 'muted', className: 'mt-1.5' }),
         h(
           'div',
@@ -826,10 +836,62 @@ function AlertsWidget({ payload }) {
           item.detail
             ? h('div', { className: 'text-[0.6875rem]', style: { color: 'var(--ui-text-tertiary)' } }, item.detail)
             : null
-        )
+        ),
+        h(LineButtons, {
+          bot,
+          declared,
+          item,
+          processing,
+          setProcessing,
+          homeUpdatedAt
+        })
       )
     )
   )
+}
+
+function LineButtons({ bot, declared, item, processing, setProcessing, homeUpdatedAt }) {
+  const ids = item?.buttons || []
+
+  if (!ids.length || !declared?.length) {
+    return null
+  }
+
+  const buttons = ids
+    .map(id => declared.find(entry => entry.id === id))
+    .filter(Boolean)
+
+  if (!buttons.length) {
+    return null
+  }
+
+  return h(
+    'div',
+    { className: 'flex shrink-0 flex-wrap justify-end gap-1' },
+    ...buttons.map(action =>
+      h(
+        Button,
+        {
+          key: action.id,
+          size: 'sm',
+          variant: action.primary ? 'default' : 'secondary',
+          disabled: processing,
+          onClick: () => void runDeclaredButton(bot, action, { item, processing, setProcessing, homeUpdatedAt })
+        },
+        action.label
+      )
+    )
+  )
+}
+
+function ButtonsWidget({ widget, bot, processing, setProcessing, homeUpdatedAt }) {
+  const buttons = widget?.buttons || []
+
+  if (!buttons.length) {
+    return h('div', { className: 'text-xs', style: { color: 'var(--ui-text-tertiary)' } }, 'no buttons')
+  }
+
+  return h(ButtonStrip, { bot, buttons, processing, setProcessing, homeUpdatedAt })
 }
 
 const WIDGETS = {
@@ -839,12 +901,17 @@ const WIDGETS = {
   markdown: MarkdownWidget,
   timeseries: TimeseriesWidget,
   sources: SourcesWidget,
-  alerts: AlertsWidget
+  alerts: AlertsWidget,
+  buttons: ButtonsWidget
 }
 
 /** True when a widget has something to draw. Keeps an empty payload from
  *  rendering as a confident-looking blank card. */
-function widgetHasContent(type, payload) {
+function widgetHasContent(type, payload, widget) {
+  if (type === 'buttons') {
+    return Boolean((widget?.buttons || []).length)
+  }
+
   if (!payload) {
     return false
   }
@@ -864,9 +931,9 @@ function widgetHasContent(type, payload) {
   return Boolean((payload.items || []).length)
 }
 
-function WidgetCard({ widget, payload, processing = false }) {
+function WidgetCard({ widget, payload, bot, processing = false, setProcessing, homeUpdatedAt }) {
   const Component = WIDGETS[widget.type]
-  const filled = widget.supported && widgetHasContent(widget.type, payload)
+  const filled = widget.supported && widgetHasContent(widget.type, payload, widget)
   const body = !widget.supported
     ? h(
         'div',
@@ -874,7 +941,7 @@ function WidgetCard({ widget, payload, processing = false }) {
         'This widget type is not in the Home vocabulary, so nothing was rendered.'
       )
     : filled
-      ? h(Component, { payload })
+      ? h(Component, { payload, widget, bot, processing, setProcessing, homeUpdatedAt })
       : h(
           'div',
           { className: 'text-[0.6875rem]', style: { color: 'var(--ui-text-quaternary)' } },
@@ -1062,22 +1129,26 @@ function UpdatedLine({ home }) {
   return h('div', { className: 'text-[0.6875rem]', style: { color: 'var(--ui-text-tertiary)' } }, parts.join(' · '))
 }
 
-/** The declared-action bar. Every button is one of four named operations
- *  resolved here — a Home never carries a command string, so the worst a
- *  malformed schema can do is fail validation in the backend. */
-function ActionsBar({ bot, actions }) {
-  const [running, setRunning] = useState('')
-
-  if (!actions?.length) {
+/** The page toolbar. Same strip as `schema.actions` (kept so upgrades do not
+ *  blank existing Homes) or `schema.toolbar`. Verbs are closed; a send_prompt
+ *  button carries declared text, not a shell. */
+function Toolbar({ bot, buttons, processing, setProcessing, homeUpdatedAt }) {
+  if (!buttons?.length) {
     return null
   }
+
+  return h(ButtonStrip, { bot, buttons, processing, setProcessing, homeUpdatedAt })
+}
+
+function ButtonStrip({ bot, buttons, processing, setProcessing, homeUpdatedAt }) {
+  const [running, setRunning] = useState('')
 
   const run = async action => {
     haptic('tap')
     setRunning(action.id)
 
     try {
-      await performAction(bot, action)
+      await runDeclaredButton(bot, action, { processing, setProcessing, homeUpdatedAt })
     } finally {
       setRunning('')
     }
@@ -1086,14 +1157,14 @@ function ActionsBar({ bot, actions }) {
   return h(
     'div',
     { className: 'flex flex-wrap items-center gap-2' },
-    ...actions.map(action =>
+    ...buttons.map(action =>
       h(
         Button,
         {
           key: action.id,
           size: 'sm',
           variant: action.primary ? 'default' : 'secondary',
-          disabled: running === action.id,
+          disabled: processing || running === action.id,
           onClick: () => void run(action)
         },
         running === action.id ? 'Running…' : action.label
@@ -1277,7 +1348,13 @@ function BotDetail({ bot }) {
               payload.error
             )
           : null,
-        h(ActionsBar, { bot, actions: payload?.schema?.actions }),
+        h(Toolbar, {
+          bot,
+          buttons: payload?.schema?.toolbar || payload?.schema?.actions,
+          processing,
+          setProcessing,
+          homeUpdatedAt: payload?.updated_at
+        }),
         payload?.schema?.composer
           ? h(Composer, { bot, processing, setProcessing, homeUpdatedAt: payload?.updated_at })
           : null,
@@ -1288,7 +1365,15 @@ function BotDetail({ bot }) {
               'div',
               { className: 'grid gap-4 sm:grid-cols-2' },
               ...widgets.map(widget =>
-                h(WidgetCard, { key: widget.id, widget, payload: data[widget.id], processing })
+                h(WidgetCard, {
+                  key: widget.id,
+                  widget,
+                  payload: data[widget.id],
+                  bot,
+                  processing,
+                  setProcessing,
+                  homeUpdatedAt: payload?.updated_at
+                })
               )
             )
           : null,
@@ -1342,10 +1427,15 @@ async function openExternal(url) {
   }
 }
 
-/** Execute one declared action. The `type` switch is the whole security model:
- *  a Home describes what it wants, and only these four verbs exist. */
-async function performAction(bot, action) {
+/** Execute one declared button. The `type` switch is the whole security model:
+ *  a Home describes what it wants, and only these verbs exist. */
+async function performAction(bot, action, item) {
   try {
+    if (action.type === 'send_prompt') {
+      await sendPrompt(bot, promptForButton(action, item))
+      return
+    }
+
     if (action.type === 'open_chat') {
       await openChat(bot)
       return
@@ -1372,6 +1462,58 @@ async function performAction(bot, action) {
   } catch (error) {
     host.notifyError(error, `${action.label} failed`)
   }
+}
+
+function promptForButton(action, item) {
+  let text = String(action?.prompt || '')
+
+  if (!item) {
+    return text.trim()
+  }
+
+  const id = String(item.id || '')
+  const title = String(item.title || item.message || '')
+
+  text = text.replaceAll('{{item.id}}', id).replaceAll('{{item.title}}', title)
+
+  return `${text.trim()}\n\n[item id: ${id}]\n[item title: ${title}]`.trim()
+}
+
+async function runDeclaredButton(bot, action, { item, processing, setProcessing, homeUpdatedAt } = {}) {
+  if (action.type === 'send_prompt') {
+    const prompt = promptForButton(action, item)
+
+    if (!prompt || processing) {
+      return
+    }
+
+    if (typeof setProcessing === 'function') {
+      setProcessing(true)
+    }
+
+    try {
+      await sendPrompt(bot, prompt)
+      await refreshDashboard(bot)
+    } catch (error) {
+      if (isCliExecTimeout(error)) {
+        host.notify({
+          kind: 'info',
+          message: 'Still working — this dashboard will update when the bot finishes'
+        })
+        await awaitHomeCatchup(bot, homeUpdatedAt)
+      } else {
+        host.notifyError(error, `Could not reach ${bot}`)
+      }
+    } finally {
+      if (typeof setProcessing === 'function') {
+        setProcessing(false)
+      }
+    }
+
+    return
+  }
+
+  await performAction(bot, action, item)
 }
 
 /** Trigger a routine through the plugin's own backend.

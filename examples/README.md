@@ -9,6 +9,7 @@ mkdir -p ~/.hermes/profiles/<bot>/home
 cp schema.json data.json ~/.hermes/profiles/<bot>/home/
 ```
 
-`schema.json` declares six widgets, two actions, and a composer. `data.json`
-fills five of them and leaves one empty on purpose, so you can see how an
+`schema.json` declares a toolbar, seven widgets (including a `buttons` card
+and line buttons on findings), and a composer. `data.json` fills five of the
+data widgets and leaves themes empty on purpose, so you can see how an
 unfilled widget renders. Full reference: `../docs/home-contract.md`.

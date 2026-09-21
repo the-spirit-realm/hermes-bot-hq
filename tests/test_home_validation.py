@@ -84,7 +84,112 @@ class SchemaTests(unittest.TestCase):
         )
 
         self.assertEqual([a["id"] for a in schema["actions"]], ["run", "chat"])
+        self.assertEqual(schema["toolbar"], schema["actions"])
         self.assertTrue(any("exec" in message for message in warnings))
+
+    def test_toolbar_is_the_same_strip_as_actions(self):
+        schema, warnings = api.validate_schema(
+            {
+                "version": 1,
+                "widgets": [],
+                "toolbar": [
+                    {"id": "review", "label": "Review", "type": "send_prompt", "prompt": "Review the dashboard."}
+                ],
+            }
+        )
+
+        self.assertEqual([a["id"] for a in schema["toolbar"]], ["review"])
+        self.assertEqual(schema["actions"], schema["toolbar"])
+        self.assertEqual(schema["toolbar"][0]["prompt"], "Review the dashboard.")
+        self.assertEqual(warnings, [])
+
+    def test_actions_win_when_toolbar_also_disagrees(self):
+        schema, warnings = api.validate_schema(
+            {
+                "version": 1,
+                "widgets": [],
+                "actions": [{"id": "old", "label": "Run", "type": "run_routine", "job": "digest"}],
+                "toolbar": [{"id": "new", "label": "Review", "type": "send_prompt", "prompt": "Review."}],
+            }
+        )
+
+        self.assertEqual([a["id"] for a in schema["actions"]], ["old"])
+        self.assertEqual(schema["toolbar"], schema["actions"])
+        self.assertEqual(warnings, [])
+
+    def test_send_prompt_without_a_prompt_is_not_a_button(self):
+        schema, warnings = api.validate_schema(
+            {"version": 1, "widgets": [], "actions": [{"id": "r", "type": "send_prompt"}]}
+        )
+
+        self.assertEqual(schema["actions"], [])
+        self.assertTrue(any("without a prompt" in message for message in warnings))
+
+    def test_an_oversized_prompt_is_truncated(self):
+        schema, warnings = api.validate_schema(
+            {
+                "version": 1,
+                "widgets": [],
+                "toolbar": [{"id": "r", "type": "send_prompt", "prompt": "x" * 5000}],
+            }
+        )
+
+        self.assertEqual(len(schema["actions"][0]["prompt"]), api.CAPS["prompt_chars"])
+        self.assertTrue(any("truncated" in message for message in warnings))
+
+    def test_buttons_widget_keeps_nested_buttons(self):
+        schema, _ = api.validate_schema(
+            {
+                "version": 1,
+                "widgets": [
+                    {
+                        "id": "triage",
+                        "type": "buttons",
+                        "buttons": [
+                            {"id": "review", "label": "Review", "type": "send_prompt", "prompt": "Review the page."}
+                        ],
+                    }
+                ],
+            }
+        )
+
+        self.assertEqual(schema["widgets"][0]["type"], "buttons")
+        self.assertEqual([b["id"] for b in schema["widgets"][0]["buttons"]], ["review"])
+
+    def test_list_line_buttons_keep_declared_ids_only(self):
+        schema = _schema(
+            {
+                "id": "findings",
+                "type": "list",
+                "buttons": [
+                    {"id": "genuine", "label": "Genuine", "type": "send_prompt", "prompt": "Mark genuine."},
+                    {"id": "escalate", "label": "Escalate", "type": "send_prompt", "prompt": "Escalate."},
+                ],
+            }
+        )
+        data, warnings = api.validate_data(
+            {
+                "widgets": {
+                    "findings": {
+                        "items": [
+                            {
+                                "id": "api-2-disk",
+                                "title": "disk full",
+                                "buttons": ["genuine", "escalate", "nope"],
+                            },
+                            {"title": "no id", "buttons": ["genuine"]},
+                        ]
+                    }
+                }
+            },
+            schema,
+        )
+
+        items = data["widgets"]["findings"]["items"]
+        self.assertEqual(items[0]["buttons"], ["genuine", "escalate"])
+        self.assertNotIn("buttons", items[1])
+        self.assertTrue(any("unknown button" in message for message in warnings))
+        self.assertTrue(any("need an id" in message for message in warnings))
 
     def test_non_http_action_urls_are_refused(self):
         schema, warnings = api.validate_schema(

@@ -6,9 +6,11 @@ It’s 2026. AI can monitor systems, run routines, analyze data, manage tasks, a
 
 **Why read a paragraph when you could see the answer? Why write one when you could just click?**
 
+A Hermes bot is purpose-built: a small, known job, and a small, known set of next steps. Chat is for when the next sentence is unpredictable. A Home is for when the work is already on the page and the user should click Review or Escalate instead of typing it again.
+
 Bot HQ gives your Hermes bots a visual, interactive interface instead of forcing everything through chat.
 
-Each bot gets its own **Home** — a dynamic dashboard built around what that bot actually does. See status, metrics, alerts, tasks, routines, and actions at a glance. **Interact with your bot directly through the interface — trigger actions, run routines, change things, and use chat when conversation is actually useful.**
+Each bot gets its own **Home** — a dynamic dashboard built around what that bot actually does. See status, metrics, alerts, tasks, routines, and buttons at a glance. **Interact with your bot directly through the interface — trigger declared moves, run routines, change things, and use chat when conversation is actually useful.**
 
 And when you have multiple bots, Bot HQ brings them together in one place.
 
@@ -94,8 +96,8 @@ Then fully quit and reopen Hermes so that bot's backend restarts.
 
 - A fleet page: every Hermes profile, no signup or register step.
 - Per bot: status, next routine, and a dashboard the bot publishes as `home/schema.json` + `home/data.json` in its profile.
-- Buttons the bot declares (`run_routine`, `open_chat`, `open_path`, `open_url`) and an optional one-line composer.
-- The widget list is fixed on purpose, so a dashboard cannot rearrange itself overnight and no bot-authored HTML or JavaScript ever runs.
+- Buttons the bot declares (`run_routine`, `open_chat`, `open_path`, `open_url`, `send_prompt`) on the toolbar, as a `buttons` card, or on list/alert lines — plus an optional one-line composer.
+- The widget list is fixed on purpose, so a dashboard cannot rearrange itself overnight and no bot-authored HTML or JavaScript ever runs. Existing Homes keep their `actions` strip after upgrade.
 
 The data contract is [`docs/home-contract.md`](docs/home-contract.md). A complete file pair lives in `examples/`.
 

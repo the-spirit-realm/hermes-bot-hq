@@ -89,6 +89,56 @@ test('an unknown action type does nothing at all', async () => {
   assert.deepEqual(plugin.revealed, [])
 })
 
+test('send_prompt goes to Bot Chat with the declared prompt', async () => {
+  const plugin = loadPlugin({ requestResults: { 'cli.exec': { blocked: false, code: 0, output: 'done' } } })
+
+  await plugin.performAction('researcher', {
+    id: 'review',
+    label: 'Review',
+    type: 'send_prompt',
+    prompt: 'Review the findings on this dashboard.'
+  })
+
+  assert.deepEqual(plugin.requests[0].params.argv.slice(-1), ['Review the findings on this dashboard.'])
+})
+
+test('a line click appends item id and title even when the prompt is escalate', () => {
+  const { promptForButton } = loadPlugin()
+
+  const sent = promptForButton({ prompt: 'escalate' }, { id: 'api-2-disk', title: 'disk full on api-2' })
+
+  assert.match(sent, /^escalate/)
+  assert.match(sent, /\[item id: api-2-disk\]/)
+  assert.match(sent, /\[item title: disk full on api-2\]/)
+})
+
+test('a line click fills template slots then still appends the item', () => {
+  const { promptForButton } = loadPlugin()
+
+  const sent = promptForButton(
+    { prompt: 'Escalate {{item.title}} ({{item.id}}).' },
+    { id: 'api-2-disk', title: 'disk full on api-2' }
+  )
+
+  assert.match(sent, /Escalate disk full on api-2 \(api-2-disk\)\./)
+  assert.match(sent, /\[item id: api-2-disk\]/)
+})
+
+test('a line send_prompt includes the item title in the query', async () => {
+  const plugin = loadPlugin({ requestResults: { 'cli.exec': { blocked: false, code: 0, output: 'done' } } })
+
+  await plugin.performAction(
+    'writer',
+    { id: 'escalate', label: 'Escalate', type: 'send_prompt', prompt: 'escalate' },
+    { id: 'api-2-disk', title: 'disk full on api-2' }
+  )
+
+  const query = plugin.requests[0].params.argv.at(-1)
+
+  assert.match(query, /escalate/)
+  assert.match(query, /disk full on api-2/)
+})
+
 test('the composer sends to the bot Chat and reports a refusal', async () => {
   const plugin = loadPlugin({ requestResults: { 'cli.exec': { blocked: false, code: 0, output: 'done' } } })
 

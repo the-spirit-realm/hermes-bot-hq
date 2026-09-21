@@ -5,6 +5,25 @@ the structure. That split is the whole design: a bot can refresh its numbers
 every morning without permission, but it cannot invent new UI on every load,
 so the page stays something you can learn once and trust.
 
+## Operator buttons
+
+A Hermes bot is purpose-built. It does a small, known job — research,
+writing, monitoring, ops — and the user's next steps on that job are also
+small and known. Chat is the right interface when the next sentence is
+unpredictable. A Home is the opposite: the bot already did the work, the
+page already shows it, and the next step is one of a few named moves the
+user repeats. Clicking is the product working. Retyping that into the
+composer every day is the product failing.
+
+The composer stays for the exception: a novel ask that is not worth a
+declared button. A monitoring bot (review / mark genuine / escalate) is one
+illustration, not the scope — any specialist dashboard that is an ops
+console for a fixed task uses the same pattern.
+
+Label and prompt live in `schema.json`. Daily values live in `data.json`.
+A line click concatenates the schema prompt with that item's id and title
+so the agent knows which row. Prompts never belong in `data.json`.
+
 ## Where it lives
 
 Two files inside the bot's own profile directory:
@@ -32,7 +51,7 @@ A half-written `data.json` is a parse error, and the page will say so.
   "title": "Research Desk",
   "subtitle": "Semis coverage, refreshed each morning",
   "composer": false,
-  "actions": [
+  "toolbar": [
     { "id": "brief", "label": "Run now", "type": "run_routine", "job": "morning-brief", "primary": true },
     { "id": "notes", "label": "Open notes", "type": "open_path", "path": "~/research/notes.md" }
   ],
@@ -51,15 +70,17 @@ A half-written `data.json` is a parse error, and the page will say so.
 | `title` | Optional, <= 80 chars. Defaults to the bot's Bot Mode title. |
 | `subtitle` | Optional, <= 160 chars. |
 | `composer` | Optional bool, default `false`. `true` adds one input on the page. |
-| `actions` | Optional, <= 8. Declared operations only (below). |
+| `toolbar` | Optional, <= 8. Page-level buttons, always above the widget stack. |
+| `actions` | Alias for `toolbar`. Existing Homes keep working; no migration. |
 | `widgets` | <= 24. Order is render order. `id` must be unique, `[a-z0-9_-]`. |
 
 `width` is `full` or `half` (default `half`); `full` spans the page. An optional
 `empty` string is shown when `data.json` has nothing for that widget yet.
 
-### Actions
+### Buttons
 
-Named operations, never free-form commands:
+The same button object is used on the toolbar, on a `buttons` widget, and
+on `list` / `alerts` lines. Named operations, never a shell command:
 
 | `type` | Extra field | Effect |
 | --- | --- | --- |
@@ -67,9 +88,30 @@ Named operations, never free-form commands:
 | `open_chat` | - | Opens the bot's conversation in Hermes |
 | `open_path` | `path` | Reveals a file or folder in Finder / Explorer |
 | `open_url` | `url` | Opens `http`/`https` in the default browser |
+| `send_prompt` | `prompt` | Sends that text to the bot's Bot Chat, then refreshes |
 
-`job` matches a cron job by id, or by name (with or without Bot Mode's
-`[bot:<name>]` prefix). One action may set `primary: true`.
+`prompt` is required, stripped, max 4000 characters. `job` matches a cron
+job by id, or by name (with or without Bot Mode's `[bot:<name>]` prefix).
+One button may set `primary: true`.
+
+If both `toolbar` and `actions` are present and disagree, `actions` wins so
+an upgraded Home never loses its existing strip.
+
+A `buttons` widget places the same controls in the card stack (no
+`data.json` payload). `list` and `alerts` widgets may declare `buttons` in
+schema; each item in `data.json` lists ids only:
+
+```json
+{ "id": "api-2-disk", "title": "disk full on api-2", "buttons": ["genuine", "escalate"] }
+```
+
+Item `id` must be `[a-z0-9_-]` and unique in that widget when `buttons` is
+set. Missing id means no line buttons (a warning, not an unreadable Home).
+Unknown ids are dropped. At most 3 buttons per line. On a line click, Bot
+HQ appends `[item id]` and `[item title]` (alerts use `message` as the
+title). Optional `{{item.id}}` / `{{item.title}}` in the schema prompt are
+substituted first. `table`, `kpi`, `markdown`, `timeseries`, and `sources`
+do not get line buttons.
 
 ## data.json
 
@@ -113,11 +155,12 @@ executing anything — a bot cannot ship HTML or JavaScript through this file.
 | --- | --- | --- |
 | `kpi` | `items: [{ label, value, delta?, tone? }]` | 12 items |
 | `table` | `columns: [str]`, `rows: [[cell]]` | 12 columns, 200 rows |
-| `list` | `items: [{ title, detail?, tone?, url? }]` | 200 items |
+| `list` | `items: [{ id?, title, detail?, tone?, url?, buttons? }]` | 200 items |
 | `markdown` | `text: str` | 20,000 chars |
 | `timeseries` | `series: [{ label, points: [[x, y]] }]` | 6 series, 500 points |
 | `sources` | `items: [{ title, url?, fetched_at? }]` | 100 items |
-| `alerts` | `items: [{ level, message, detail? }]` | 50 items |
+| `alerts` | `items: [{ id?, level, message, detail?, buttons? }]` | 50 items |
+| `buttons` | none (schema `buttons` only) | 8 buttons |
 
 `tone` is `good`, `warn`, `bad`, or `neutral`. `level` is `info`, `warn`, or
 `error`. `markdown` renders as paragraphs and bullet lines only — no HTML.
